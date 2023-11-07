@@ -22,19 +22,26 @@ generate_example_forecast <- function(forecast_date,
 
   # Get the weather data
   message('Getting weather')
+  # uses the RopenMeteo function to grab weather from the sites
+  # and you can specify the length of the future period and number of days in the past
+    # you can modify the data that are collected in the get_daily_weather function
+    # or if you want to generate an hourly forecast, you can use get_hourly_weather
   weather_dat <- sites |>
-    map_dfr(get_weather, site_list = site_list)
+    map_dfr(get_daily_weather, site_list = site_list, past = 60, future = 30)
 
-  historic_weather <- weather_dat |>
+  # split it into historic and future
+
+   historic_weather <- weather_dat |>
     filter(datetime < forecast_date) |>
+    # calculate a daily mean (remove ensemble)
     group_by(datetime, variable, site_id) |>
     summarise(prediction = mean(prediction)) |>
     pivot_wider(names_from = variable, values_from = prediction) |>
     mutate(air_temperature = air_temperature - 273.15)
 
+
   forecast_weather <- weather_dat |>
     filter(datetime >= forecast_date) |>
-    group_by(datetime, variable, site_id, parameter) |>
     pivot_wider(names_from = variable, values_from = prediction) |>
     mutate(air_temperature = air_temperature - 273.15)
 
@@ -63,27 +70,15 @@ generate_example_forecast <- function(forecast_date,
                             duration = targets$duration[1],
                             project_id = project_id)
 
-  if (targets$duration[1] == 'P1D') {
-    forecast_file_name <- paste0('daily-', forecast_date, '-', model_id, '.csv')
-  } else {
-    if (targets$duration[1] == 'PT1H') {
-      forecast_file_name <- paste0('daily-', forecast_date, '-', model_id, '.csv')
-    } else {
-      message('Unknown duration')
-      stop()
-    }
-  }
-
-
-
+  forecast_file <- file.path(out_dir, paste0(forecast_date, '-', model_id, '.csv'))
   if (dir.exists(out_dir)) {
-    write_csv(forecast_df,file.path(out_dir, forecast_file_name))
+    write_csv(forecast_df,forecast_file)
   } else {
     dir.create(out_dir)
-    write_csv(forecast_df,file.path(out_dir, forecast_file_name))
+    write_csv(forecast_df,forecast_file)
   }
 
 
-  return(file.path(out_dir, forecast_file_name))
+  return(forecast_file)
 
 }
