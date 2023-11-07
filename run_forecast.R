@@ -21,9 +21,17 @@ forecast <- generate_example_forecast(forecast_date = forecast_date,
 #----------------------------------------#
 
 # write forecast locally
-forecast_file <- paste0('Forecasts/', forecast_date, '-', model_id, '.csv')
+save_here <- 'Forecasts/'
+forecast_file <- paste0(save_here, forecast_date, '-', model_id, '.csv')
 
-write_csv(forecast, forecast_file)
+if (dir.exists(save_here)) {
+  write_csv(forecast, forecast_file)
+} else {
+  dir.create(save_here)
+  write_csv(forecast, forecast_file)
+}
+
+
 
 # Submit forecast!
 vera4castHelpers::submit(forecast_file = forecast_file)
