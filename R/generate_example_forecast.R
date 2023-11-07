@@ -60,7 +60,8 @@ generate_example_forecast <- function(forecast_date,
                             prediction = forecast,
                             variable = var,
                             depth_m = forecast_depths,
-                            duration = targets$duration[1])
+                            duration = targets$duration[1],
+                            project_id = project_id)
 
   if (targets$duration[1] == 'P1D') {
     forecast_file_name <- paste0('daily-', forecast_date, '-', model_id, '.csv')
