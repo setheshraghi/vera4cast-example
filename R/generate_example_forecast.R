@@ -5,8 +5,7 @@ generate_example_forecast <- function(forecast_date,
                                       var,
                                       site,
                                       forecast_depths = 'focal',
-                                      project_id = 'vera4cast',
-                                      out_dir = 'Forecasts') {
+                                      project_id = 'vera4cast') {
 
   # Put your forecast generating code in here, and add additional arguments as needed.
   # Forecast date should not be hard coded
@@ -76,15 +75,6 @@ generate_example_forecast <- function(forecast_date,
                             depth_m = forecast_depths,
                             duration = targets$duration[1],
                             project_id = project_id)
-
-  # forecast_file <- file.path(out_dir, paste0(forecast_date, '-', model_id, '.csv'))
-  # if (dir.exists(out_dir)) {
-  #   write_csv(forecast_df,forecast_file)
-  # } else {
-  #   dir.create(out_dir)
-  #   write_csv(forecast_df,forecast_file)
-  # }
-
 
   return(forecast_df)
 
