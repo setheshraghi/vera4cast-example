@@ -1,0 +1,19 @@
+on:
+  workflow_dispatch:
+  schedule:
+  - cron: "0 13 * * *"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: rqthomas/vera4cast:latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+# Point to the right path, run the right Rscript command
+      - name: Run automatic forecast submission
+        run: Rscript run_forecasts.R
