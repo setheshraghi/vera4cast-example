@@ -11,11 +11,20 @@ forecast_date <- Sys.Date()
 site_list <- read_csv("https://raw.githubusercontent.com/LTREB-reservoirs/vera4cast/main/vera4cast_field_site_metadata.csv",
                       show_col_types = FALSE)
 
-# this should generate a csv file
+# this should generate a df
 example_forecast_file <- generate_example_forecast(forecast_date = forecast_date,
                                                    model_id = 'TempC_mean_example_forecast',
                                                    targets_url = "https://renc.osn.xsede.org/bio230121-bucket01/vera4cast/targets/project_id=vera4cast/duration=P1D/daily-insitu-targets.csv.gz",
                                                    var = 'Temp_C_mean',
-                                                   sites = 'fcre')
+                                                   site = 'fcre')
+
+# example for multiple sites
+site <- c('fcre', 'bvre')
+example_forecast_file <- site |>
+  map_dfr(generate_example_forecast, forecast_date = forecast_date,
+                                                   model_id = 'TempC_mean_example_forecast',
+                                                   targets_url = "https://renc.osn.xsede.org/bio230121-bucket01/vera4cast/targets/project_id=vera4cast/duration=P1D/daily-insitu-targets.csv.gz",
+                                                   var = 'Temp_C_mean')
+
 # Submit forecast!
 vera4castHelpers::submit(forecast_file = example_forecast_file)
