@@ -3,8 +3,8 @@ generate_example_forecast <- function(forecast_date,
                                       model_id,
                                       targets_url,
                                       var,
-                                      sites = c('fcre', 'bvre'),
-                                      forecast_depths = 1.6,
+                                      site,
+                                      forecast_depths = 'focal',
                                       project_id = 'vera4cast',
                                       out_dir = 'Forecasts') {
 
@@ -12,11 +12,18 @@ generate_example_forecast <- function(forecast_date,
   # Forecast date should not be hard coded
   # This is an example function that also grabs weather forecast information to be used as covariates
 
+  if (site == 'fcre' & forecast_depths == 'focal') {
+    forecast_depths <- 1.6
+  }
+
+  if (site == 'bvre' & forecast_depths == 'focal') {
+    forecast_depths <- 1.5
+  }
   # Get targets
   message('Getting targets')
   targets <- readr::read_csv(targets_url, show_col_types = F) |>
     filter(variable %in% var,
-           site_id %in% sites,
+           site_id %in% site,
            depth_m %in% forecast_depths,
            datetime < forecast_date)
 
@@ -26,7 +33,7 @@ generate_example_forecast <- function(forecast_date,
   # and you can specify the length of the future period and number of days in the past
     # you can modify the data that are collected in the get_daily_weather function
     # or if you want to generate an hourly forecast, you can use get_hourly_weather
-  weather_dat <- sites |>
+  weather_dat <- site |>
     map_dfr(get_daily_weather, site_list = site_list, past = 60, future = 30)
 
   # split it into historic and future
@@ -70,15 +77,15 @@ generate_example_forecast <- function(forecast_date,
                             duration = targets$duration[1],
                             project_id = project_id)
 
-  forecast_file <- file.path(out_dir, paste0(forecast_date, '-', model_id, '.csv'))
-  if (dir.exists(out_dir)) {
-    write_csv(forecast_df,forecast_file)
-  } else {
-    dir.create(out_dir)
-    write_csv(forecast_df,forecast_file)
-  }
+  # forecast_file <- file.path(out_dir, paste0(forecast_date, '-', model_id, '.csv'))
+  # if (dir.exists(out_dir)) {
+  #   write_csv(forecast_df,forecast_file)
+  # } else {
+  #   dir.create(out_dir)
+  #   write_csv(forecast_df,forecast_file)
+  # }
 
 
-  return(forecast_file)
+  return(forecast_df)
 
 }
