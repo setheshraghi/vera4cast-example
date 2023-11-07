@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: rqthomas/vera4cast:latest
+      image: rqthomas/vera-rocker:latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
