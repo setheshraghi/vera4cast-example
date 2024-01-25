@@ -7,9 +7,9 @@ generate_example_forecast <- function(forecast_date,
                                       forecast_depths = 'focal',
                                       project_id = 'vera4cast') {
 
-  # Put your forecast generating code in here, and add additional arguments as needed.
+  # Put your forecast generating code in here, and add/remove arguments as needed.
   # Forecast date should not be hard coded
-  # This is an example function that also grabs weather forecast information to be used as covariates
+  # This is an example function that also grabs weather forecast information to be used as co-variates
 
   if (site == 'fcre' & forecast_depths == 'focal') {
     forecast_depths <- 1.6

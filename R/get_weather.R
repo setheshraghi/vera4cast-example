@@ -6,7 +6,7 @@ get_hourly_weather <- function(current_site, site_list, past = 90, future = 30) 
 
   long <-  site_list |>
     filter(site_id == current_site) |>
-    select(longtitude) |>  pull()
+    select(longitude) |>  pull()
 
 
   site_weather <- RopenMeteo::get_ensemble_forecast(
@@ -31,7 +31,7 @@ get_daily_weather <- function(current_site, site_list, past = 90, future = 30) {
 
   long <-  site_list |>
     filter(site_id == current_site) |>
-    select(longtitude) |>  pull()
+    select(longitude) |>  pull()
 
 
   site_weather <- RopenMeteo::get_ensemble_forecast(
