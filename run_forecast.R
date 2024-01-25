@@ -3,7 +3,7 @@ source('load_packages.R')
 
 # load the forecast generation function - include at least a forecast_date argument
 source('R/generate_example_forecast.R')
-source('R/get_weather.R')
+source('R/get_weather.R') # wrapper around the RopenMeteo package to get weather covariates
 
 # ---- Generate the forecasts -----
 # default is to run a real-time forecast for today
@@ -14,10 +14,10 @@ model_id <- 'TempC_mean_example_forecast'
 
 # this should generate a df
 forecast <- generate_example_forecast(forecast_date = forecast_date,
-                                                   model_id = model_id,
-                                                   targets_url = "https://renc.osn.xsede.org/bio230121-bucket01/vera4cast/targets/project_id=vera4cast/duration=P1D/daily-insitu-targets.csv.gz",
-                                                   var = 'Temp_C_mean',
-                                                   site = 'fcre')
+                                      model_id = model_id,
+                                      targets_url = "https://renc.osn.xsede.org/bio230121-bucket01/vera4cast/targets/project_id=vera4cast/duration=P1D/daily-insitu-targets.csv.gz",
+                                      var = 'Temp_C_mean',
+                                      site = 'fcre')
 #----------------------------------------#
 
 # write forecast locally
