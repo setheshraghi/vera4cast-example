@@ -2,7 +2,11 @@
 
 This repository can be used as a template to develop automated workflows to submit forecasts to the [VERA (Virginia Ecoforecast Reservoir Analysis) Forecasting Challenge](https://www.ltreb-reservoirs.org/vera4cast/).
 
-The repository is structured with the following sub-directories and files - tutorial: This contains an R Markdown document that steps through the process of generating a simple water temperature forecast for the VERA forecasting challenge. It takes you through the steps to access the targets data, meteorological weather drivers, modelling fitting and forecast generation and forecast submission! This is a good introduction to the Challenge and the overall forecasting workflow. - forecast_code: This contains the scripts needed to generate a forecast. Most of the code is replicated from the tutorial as a template but can (should) be edited with your own forecast code. The `load_packages.R` calls the package installation steps for the forecast and the `run_forecast.R` script is the main forecast code. - .github/workflows: contains the yaml file needed to automate the forecast workflow. If you don't change the file structure in the repository, you won't need to modify anything here! Just follow the instructions below on automating your forecast
+The repository is structured with the following sub-directories and files 
+
+- tutorial: This contains an R Markdown document that steps through the process of generating a simple water temperature forecast for the VERA forecasting challenge. It takes you through the steps to access the targets data, meteorological weather drivers, modelling fitting and forecast generation and forecast submission! This is a good introduction to the Challenge and the overall forecasting workflow.
+- forecast_code: This contains the scripts needed to generate a forecast. Most of the code is replicated from the tutorial as a template but can (should) be edited with your own forecast code. The `load_packages.R` calls the package installation steps for the forecast and the `run_forecast.R` script is the main forecast code.
+- .github/workflows: contains the yaml file needed to automate the forecast workflow. If you don't change the file structure in the repository, you won't need to modify anything here! Just follow the instructions below on automating your forecast
 
 ## 1. Tutorial
 
