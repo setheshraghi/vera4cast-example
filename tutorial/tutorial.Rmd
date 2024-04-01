@@ -13,7 +13,7 @@ date: "`r Sys.Date()`"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# This R markdown document
+# This VERA tutorial
 
 This document presents a short tutorial to get you started on generating forecasts specifically for submission to the VERA LTREB Forecast Challenge. The materials are modified from those initially developed for the EFI-NEON Forecast Challenge (found [here](https://zenodo.org/records/8316966)).
 
@@ -383,7 +383,7 @@ ggplot(targets_lm, aes(x=air_temperature, y= Temp_C_mean, colour = site_id)) +
 
 ## TASKS
 
-Possible modifications to Model 1 - simple linear model:
+Possible modifications to the simple linear model:
 
 -   Include additional weather co-variates in the linear model. List them in the `get_ensemble_forecast()` function
 -   Specify a non-linear relationship
