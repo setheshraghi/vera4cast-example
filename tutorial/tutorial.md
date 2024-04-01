@@ -16,8 +16,6 @@
     -   [5.2 Submit forecast](#submit-forecast)
     -   [5.3 TASKS](#tasks)
     -   [5.4 Register your participation](#register-your-participation)
-    -   [5.5 Accessing other weather
-        forecasts](#accessing-other-weather-forecasts)
 
 # 1 This R markdown document
 
@@ -54,31 +52,11 @@ remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist
 library(tidyverse)
 ```
 
-    ## Warning: package 'tidyverse' was built under R version 4.2.3
-
-    ## Warning: package 'ggplot2' was built under R version 4.2.3
-
-    ## Warning: package 'tibble' was built under R version 4.2.3
-
-    ## Warning: package 'tidyr' was built under R version 4.2.2
-
-    ## Warning: package 'readr' was built under R version 4.2.3
-
-    ## Warning: package 'purrr' was built under R version 4.2.3
-
-    ## Warning: package 'dplyr' was built under R version 4.2.3
-
-    ## Warning: package 'stringr' was built under R version 4.2.3
-
-    ## Warning: package 'forcats' was built under R version 4.2.3
-
-    ## Warning: package 'lubridate' was built under R version 4.2.3
-
     ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ## ✔ dplyr     1.1.3     ✔ readr     2.1.4
+    ## ✔ dplyr     1.1.4     ✔ readr     2.1.5
     ## ✔ forcats   1.0.0     ✔ stringr   1.5.1
-    ## ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
-    ## ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+    ## ✔ ggplot2   3.5.0     ✔ tibble    3.2.1
+    ## ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
     ## ✔ purrr     1.0.2     
     ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
     ## ✖ dplyr::filter() masks stats::filter()
@@ -251,7 +229,7 @@ targets <- targets %>%
 targets |> distinct(variable)
 ```
 
-    ## # A tibble: 21 × 1
+    ## # A tibble: 23 × 1
     ##    variable             
     ##    <chr>                
     ##  1 Temp_C_mean          
@@ -264,15 +242,16 @@ targets |> distinct(variable)
     ##  8 DOsat_percent_mean   
     ##  9 GreenAlgae_ugL_sample
     ## 10 Bluegreens_ugL_sample
-    ## # ℹ 11 more rows
+    ## # ℹ 13 more rows
 
 There are a number of different physical, chemical, and biological
 variables with observations at fcre. We will start by just looking at
-Temp_C_mean (mean daily water temperatures).
+P1D Temp_C_mean (mean daily water temperatures).
 
 ``` r
 targets <- targets %>%
-  filter(variable == 'Temp_C_mean')
+  filter(variable == 'Temp_C_mean',
+         duration == 'P1D')
 ```
 
 ## 3.2 Visualise the data
@@ -299,7 +278,7 @@ started forecasting:
     generate forecasts about lake variables.
 
 To start, we will produce forecasts for just one of these depths - focal
-depth at fcre is 1.6 m.
+depth at fcre, 1.6 m.
 
 ``` r
 targets <- targets %>%
@@ -317,7 +296,7 @@ location of the site you are interested in, the number of days into the
 past and future, and the model you want the forecast from.
 
 Read more about what variables are available and how to use the R
-function [here](https://github.com/FLARE-forecast/RopenMeteo)
+functions [here](https://github.com/FLARE-forecast/RopenMeteo)
 
 ## 4.1 Download co-variates
 
@@ -325,14 +304,13 @@ function [here](https://github.com/FLARE-forecast/RopenMeteo)
 
 We will generate a water temperature forecast using `air_temperature` as
 a co-variate. We can get the location of FCR from the `site_list` table.
-The maximum number of past days available from OpenMeteo API is ~60
+The maximum number of past days available from OpenMeteo API is ~90
 days. If you need more historical days for model calibration and
 testing, historical data are available through OpenMeteo’s [historical
 weather API](https://open-meteo.com/en/docs/historical-weather-api). The
-past data (like neon4cast::noaa_stage3()) are a stacked 1 day ahead
-pseudo-observations.
+past data are a stacked 1 day-ahead pseudo-observation.
 
-The package also includes a function to convert to EFI standard.
+The package also includes a function to convert to EFI standard format.
 
 ``` r
 lat <- site_list |>
@@ -358,11 +336,12 @@ weather_dat <- RopenMeteo::get_ensemble_forecast(
   mutate(site_id = 'fcre')
 ```
 
-This is an ensemble hourly forecast (multiple realisations of
-conditions). Now we have a timeseries of historic data and a 30 member
+This is an ensemble hourly forecast (multiple (31) realisations of
+conditions). Now we have a timeseries of historic data and a 31 member
 ensemble forecast of future air temperatures.
 
-    ## Warning: Removed 23436 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 32178 rows containing missing values or values outside the scale range
+    ## (`geom_line()`).
 
 <figure>
 <img src="tutorial_files/figure-markdown_github/unnamed-chunk-11-1.png"
@@ -372,7 +351,9 @@ temeprature forecasts at lake sites</figcaption>
 </figure>
 
 To generate a daily water temperature forecast we will use a daily water
-temperature to train and run our model but retain the ensemble members.
+temperature to train and run our model. This is calculated from the
+hourly data we have but we retain the ensemble members as a source of
+driver uncertainty.
 
 ``` r
 # get daily means
@@ -388,18 +369,19 @@ daily_weather <- weather_dat |>
 We will separate the data into `historic_weather` for
 training/calibration and then `future_weather` to generate a forecast.
 We will also convert to Celsius from Kelvin. For the historic data we do
-not need the individual enemble members, and will train with the
+not need the individual ensemble members, and will train with the
 ensemble mean.
 
 ``` r
 # split it into historic and future
-
+forecast_date <- Sys.Date()
 historic_weather <- daily_weather |>
-  filter(datetime < Sys.Date()) |>
+  filter(datetime < forecast_date) |>
   group_by(datetime, variable, site_id) |> 
+  # calculate the ensemble mean
   summarise(prediction = mean(prediction)) |> 
   pivot_wider(names_from = variable, values_from = prediction) |>
-  mutate(air_temperature = air_temperature - 273.15)
+  mutate(air_temperature = air_temperature - 273.15) # convert to degree C
 ```
 
     ## `summarise()` has grouped output by 'datetime', 'variable'. You can override
@@ -407,16 +389,16 @@ historic_weather <- daily_weather |>
 
 ``` r
 future_weather <- daily_weather |>
-  filter(datetime >= Sys.Date()) |>
+  filter(datetime >= forecast_date) |>
   pivot_wider(names_from = variable, values_from = prediction) |>
-  mutate(air_temperature = air_temperature - 273.15)
+  mutate(air_temperature = air_temperature - 273.15) # convert to degree C
 ```
 
 # 5 Linear model with covariates
 
 We will fit a simple linear model between historic air temperature and
 the water temperature targets data. Using this model we can then use our
-future estimates of air temperature (all 30 ensembles) to estimate water
+future forecasts of air temperature (all 31 ensembles) to estimate water
 temperature at each site. The ensemble weather forecast will therefore
 propagate uncertainty into the water temperature forecast and give an
 estimate of driving data uncertainty.
@@ -436,12 +418,12 @@ tail(targets_lm)
     ## # A tibble: 6 × 7
     ##   project_id site_id datetime            duration depth_m Temp_C_mean
     ##   <chr>      <chr>   <dttm>              <chr>      <dbl>       <dbl>
-    ## 1 vera4cast  fcre    2024-01-18 00:00:00 P1D          1.6        2.25
-    ## 2 vera4cast  fcre    2024-01-19 00:00:00 P1D          1.6        2.55
-    ## 3 vera4cast  fcre    2024-01-20 00:00:00 P1D          1.6        2.37
-    ## 4 vera4cast  fcre    2024-01-21 00:00:00 P1D          1.6        1.69
-    ## 5 vera4cast  fcre    2024-01-22 00:00:00 P1D          1.6        1.73
-    ## 6 vera4cast  fcre    2024-01-23 00:00:00 P1D          1.6        2.02
+    ## 1 vera4cast  fcre    2024-03-26 00:00:00 P1D          1.6        10.4
+    ## 2 vera4cast  fcre    2024-03-27 00:00:00 P1D          1.6        10.2
+    ## 3 vera4cast  fcre    2024-03-28 00:00:00 P1D          1.6        10.5
+    ## 4 vera4cast  fcre    2024-03-29 00:00:00 P1D          1.6        10.7
+    ## 5 vera4cast  fcre    2024-03-30 00:00:00 P1D          1.6        10.7
+    ## 6 vera4cast  fcre    2024-03-31 00:00:00 P1D          1.6        11.8
     ## # ℹ 1 more variable: air_temperature <dbl>
 
 To fit the linear model we use the base R `lm()` but there are also
@@ -451,13 +433,13 @@ You can explore the
 information on the `fable::TSLM()` function.
 
 ``` r
-#Fit linear model based on past data: water temperature = m * air temperature + b
+# Fit linear model based on past data: water temperature = m * air temperature + b
 fit <- lm(targets_lm$Temp_C_mean ~ targets_lm$air_temperature)
     
-# use linear regression to forecast water temperature for each ensemble member
+# Use the fitted linear model to forecast water temperature for each ensemble member
 forecasted_temperature <- fit$coefficients[1] + fit$coefficients[2] * future_weather$air_temperature
 
-# put all the relevant information into a tibble that we can bind together
+# Put all the relevant information into a tibble that we can bind together
 temp_lm_forecast <- tibble(datetime = future_weather$datetime,
                            site_id = future_weather$site_id,
                            parameter = future_weather$parameter,
@@ -465,12 +447,12 @@ temp_lm_forecast <- tibble(datetime = future_weather$datetime,
                            variable = "Temp_C_mean")
 ```
 
-We now have 30 possible forecasts of water temperature at each site and
+We now have 31 possible forecasts of water temperature at each site and
 each day. On this plot each line represents one of the possible
 forecasts and the range of forecasted water temperature is a simple
 quantification of the uncertainty in our forecast.
 
-Looking back at the forecasts we produced:
+Looking at the forecasts we produced:
 
 ![](tutorial_files/figure-markdown_github/unnamed-chunk-16-1.png)
 
@@ -489,7 +471,7 @@ A reminder of the columns needed for an ensemble forecast:
     we don’t need to register!
 
 The columns `project_id`, `depth_m`, and `duration` are also needed. For
-a daily forecast the duration is `P1D`. We produce water temperature
+a daily forecast the duration is `P1D`. We produced a water temperature
 forecast at the focal depth only (1.6 m).
 
 ``` r
@@ -498,7 +480,7 @@ model_id <- 'example_ID'
 
 temp_lm_forecast_standard <- temp_lm_forecast %>%
   mutate(model_id = model_id,
-         reference_datetime = Sys.Date(),
+         reference_datetime = forecast_date,
          family = 'ensemble',
          parameter = as.character(parameter),
          duration = 'P1D', 
@@ -515,15 +497,15 @@ These tools can be downloaded from Github using
 `remotes::install_github('LTREB-reservoirs/vera4castHelpers')`. These
 include functions for submitting, scoring and reading forecasts:
 
--   `submit()` - submit the forecast file to the neon4cast server where
+-   `submit()` - submit the forecast file to the VERA Challenge, where
     it will be scored
--   `forecast_output_validator()` - will check the file is in the
-    correct format to be submitted
+-   `forecast_output_validator()` - check the file is in the correct
+    format to be submitted
 
 ``` r
 # Start by writing the forecast to file
-save_here <- 'Forecasts/'
-forecast_file <- paste0(save_here, Sys.Date(), '-', model_id, '.csv')
+save_here <- 'Forecasts/' # just for helpful organisation
+forecast_file <- paste0(save_here, forecast_date, '-', model_id, '.csv')
 
 if (dir.exists(save_here)) {
   write_csv(temp_lm_forecast_standard, forecast_file)
@@ -558,6 +540,8 @@ Possible modifications to Model 1 - simple linear model:
     temperature to estimate dissolved oxygen concentration at the
     surface?
 -   Include a lag in the predictors
+-   Add another source of uncertainty - what are the errors in the
+    linear model?
 
 Until you start submitting ‘real’ forecasts you can (should) keep
 `example` in the model_id. These forecasts are processed and scored but
@@ -573,10 +557,3 @@ model_id, with associated metadata. You should register
 
 Read more on the VERA Forecast Challenge website
 <https://www.ltreb-reservoirs.org/vera4cast/instructions.html>.
-
-## 5.5 Accessing other weather forecasts
-
-This tutorial has taken you through how to submit a realtime forecast
-using weather covariates. But what about submitting re-forecasts or
-historical forecasts (as if they were realtime)? The ROpenMeteo
-framework only has today’s weather forecast available.
