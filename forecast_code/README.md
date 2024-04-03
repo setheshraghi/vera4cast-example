@@ -1,6 +1,6 @@
 # Forecast code
 
-In the run_forecast.R script include the forecast workflow to generate a real-time forecast. The example model from the tutorial has be made into a function (`R/generate_example_forecast`) and is shown as an example. Once you have successfully modified the script to generate *your* forecast you can automate the submission steps (see below)!
+In the `run_forecast.R` script include the forecast workflow to generate a real-time forecast. The example model from the tutorial has be made into a function (`R/generate_example_forecast`) and is shown as an example. Once you have successfully modified the script to generate *your* forecast you can automate the submission steps (see below)!
 
 # Workflow automation
 
@@ -40,7 +40,7 @@ A basic description of a Github action:
 
 Note: the indentation matters, make sure the indentation is as formatted here!
 
-Because this is a scheduled workflow this will run everyday, submitting your forecast to the Challenge and rendering your html with the new forecast. As long as your `run_forecast.R` has all the code in to do this!
+Because this is a scheduled workflow this will run everyday, submitting your forecast to the Challenge. As long as your `run_forecast.R` has all the code in to do this!
 
 ```         
 on:
@@ -70,11 +70,11 @@ jobs:
 
 Make sure that the `run_forecast` in the forecast_code directory contains all the code needed to generate your forecast and submit it to the Challenge (read targets, fit model, generate forecast, submit etc.).
 
-Note: if you move this file or want to use a script that is stored elsewhere in the repository make sure you change the paths in the yaml.
+Note: if you move this file or want to use a script that is stored elsewhere in the repository make sure you change the paths in the `submit_forecast.yaml`.
 
 ### 4.2 Enable Actions
 
-In Github go to your repository and navigate to the ACTIONS tab and make sure they are enabled. If they're not go to Settings \> Actions \> General and check the Allow actions and reusable workflows.
+In Github, go to your repository and navigate to the ACTIONS tab and make sure they are enabled. If they're not go to Settings \> Actions \> General and check the Allow actions and reusable workflows.
 
 ### 4.3 Test the Action
 
