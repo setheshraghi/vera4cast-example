@@ -15,11 +15,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # This VERA tutorial
 
-This document presents a short tutorial to get you started on generating forecasts specifically for submission to the VERA LTREB Forecast Challenge. The materials are modified from those initially developed for the EFI-NEON Forecast Challenge (found [here](https://zenodo.org/records/8316966)).
+This document presents a short tutorial to get you started on generating ecological forecasts specifically for submission to the Virginia Ecoforecast Reservoir Analysis (VERA) Forecast Challenge. The materials are modified from those initially developed for the EFI-NEON Forecast Challenge (found [here](https://zenodo.org/records/8316966)). To learn more about the VERA Forecast Challenge, see our [website](https://www.ltreb-reservoirs.org/vera4cast/)). 
 
-The development of these materials has been supported by NSF grants DEB-1926388 and DBI-1933016.
+The development of these materials has been supported by NSF grants DEB-2327030, DEB-1926388, and DBI-1933016.
 
-To complete the workshop via this markdown document the following packages will need to be installed:
+To complete the tutorial via this markdown document, the following R packages will need to be installed first:
 
 -   `remotes`
 -   `tidyverse`
@@ -43,27 +43,27 @@ library(tidyverse)
 library(lubridate)
 ```
 
-If you do not wish to run the code yourself you can follow along via the html (tutorial.md).
+If you do not wish to run the code yourself, you can alternatively follow along via the html (tutorial.md).
 
 # Introduction to VERA Forecast Challenge
 
-The VERA Forecast Challenge is hosted by the Ecological Forecasting Project at Virginia Tech (EFP). We are using forecasts to compare the predictability of different ecosystem variables, in different ecosystem conditions to identify the fundamental predictability of freshwater ecosystems.
+The VERA Forecast Challenge is hosted by the Center for Ecosystem Forecasting at Virginia Tech [CEF](https://ecoforecast.centers.vt.edu). We are using forecasts to compare the predictability of different ecosystem variables, across many different ecosystem conditions, to identify the fundamental predictability of freshwater ecosystems.
 
-The forecasting challenge is one component of the Virginia Reservoirs LTREB project that is monitoring the reservoirs to broadly advance our understanding of freshwater ecosystem processes in two neighboring reservoirs with contrasting dissolved oxygen conditions.
+The VERA Forecast Challenge is one component of the Virginia Reservoirs LTREB project, which is both monitoring and forecasting two reservoirs with contrasting dissolved oxygen conditions in southwestern Virginia, USA to broadly advance our understanding of freshwater ecosystem predictability.
 
-## The challenge
+## The Challenge
 
 What: Freshwater water quality.
 
-Where: 2 Virginia reservoirs (managed by the Western Virginia Water Authority).
+Where: Two Virginia reservoirs (managed by the Western Virginia Water Authority) and the stream that connects them. To learn more about these freshwater ecosystems, see [here](https://www.ltreb-reservoirs.org/reservoirs/).
 
-When: Daily forecasts for at least 30-days in the future. New forecast submissions, that use new data to update the forecast, are accepted daily. The only requirement is that submissions are predictions of the future at the time the forecast is submitted.
+When: Daily forecasts for at least 30 days-ahead in the future. New forecast submissions that are continuously updated with observations as soon as they become available are accepted daily. The only requirement is that submissions are predictions of the future at the time the forecast is submitted.
 
-For the challenge, you can chose to submit to any combination of sites and variables using any method. Find more information about the targets available [here](https://www.ltreb-reservoirs.org/vera4cast/targets.html).
+For the VERA Challenge, you can chose to submit to any combination of sites and variables using any method. Find more information about the targets available [here](https://www.ltreb-reservoirs.org/vera4cast/targets.html).
 
 ## Submission requirements
 
-For the Challenge, forecasts must include quantified uncertainty. The file can represent uncertainty using an ensemble forecast (multiple realizations of future conditions) or a distribution forecast (with mean and standard deviation), specified in the family and parameter columns of the forecast file.
+For the VERA Challenge, submitted forecasts must include quantified uncertainty. The submitted file can represent uncertainty using an ensemble forecast (multiple realizations of future conditions) or a distribution forecast (with mean and standard deviation), specified in the family and parameter columns of the forecast file.
 
 ### File format
 
@@ -85,7 +85,7 @@ The file is a csv format with the following columns:
 
 -   `family`: name of the probability distribution that is described by the parameter values in the parameter column. For an ensemble forecast, the `family` column uses the word `ensemble` to designate that it is a ensemble forecast and the parameter column is the ensemble member number (1, 2, 3 ...). For a distribution forecast, the `family` describes the type of distribution. For a parametric forecast with the normal distribution, the `family` column uses the word `normal` to designate a normal distribution and the parameter column must have values of `mu` and `sigma` for each forecasted variable, site_id, depth and time combination.
 
-Parameteric forecasts for binary variables should use bernoulli as the distribution.
+Parametric forecasts for binary variables should use bernoulli as the distribution.
 
 The following names and parameterization of the distribution are supported (family: parameters):
 
@@ -99,7 +99,7 @@ The following names and parameterization of the distribution are supported (fami
 -   exponential: rate
 -   poisson: lambda
 
-If you are submitting a forecast that is not in the supported list we recommend using the ensemble format and sampling from your distribution to generate a set of ensemble members that represents your distribution. The full list of required columns and format can be found in the [Challenge documentation](https://www.ltreb-reservoirs.org/vera4cast/instructions.html#forecast-file-format).
+If you are submitting a forecast that is not in the supported list above, we recommend using the ensemble format and sampling from your distribution to generate a set of ensemble members that represents your distribution. The full list of required columns and format can be found in the [Challenge documentation](https://www.ltreb-reservoirs.org/vera4cast/instructions.html#forecast-file-format).
 
 -   `parameter` the parameters for the distribution or the number of the ensemble members.
 
@@ -111,14 +111,14 @@ If you are submitting a forecast that is not in the supported list we recommend 
 
 ## Read in the data
 
-We start forecasting by first looking at the historic data - called the 'targets'. These data are available in near real-time, with the latency of approximately 24-48 hrs. Here is how you read in the data from the targets file available:
+We start forecasting by first looking at the historical data - called the 'targets'. These data are available in near real-time, with the latency of approximately 24-48 hrs. Here is how you read in the data from the targets file available:
 
 ```{r eval=TRUE, echo = TRUE, error=FALSE, warning=FALSE, message=FALSE}
 #read in the targets data
 targets <- read_csv('https://renc.osn.xsede.org/bio230121-bucket01/vera4cast/targets/project_id=vera4cast/duration=P1D/daily-insitu-targets.csv.gz')
 ```
 
-Information on the VERA sites can be found in the `vera4cast_field_site_metadata.csv` file on GitHub.This table has information about the field sites, including location, lake depth, and surface area.
+Information on the VERA sites can be found in the `vera4cast_field_site_metadata.csv` file on GitHub. This table has information about the field sites, including location, reservoir depth, and surface area.
 
 ```{r eval=TRUE, echo = TRUE, error=FALSE, warning=FALSE, message=FALSE}
 # read in the sites data
@@ -169,8 +169,8 @@ targets %>%
 We can think about what type of models might be useful to predict water temperature. Below are descriptions of three simple models to get you started forecasting:
 
 -   We could use information about current conditions to predict the next day. What is happening today is usually a good predictor of what will happen tomorrow (baseline - persistence model).
--   And we could think about what the historic data tells us about this time of year. January this year is likely to be similar to January last year (baseline - climatology/DOY model)
--   We could also look at the lake variables' relationship(s) with other variable. Could we use existing forecasts about the weather to generate forecasts about lake variables.
+-   We could also think about what the historical data tells us about reservoir dynamics this time of year. For example, conditions in January this year are likely to be similar to January last year (baseline - climatology/DOY model)
+-   We could also look at the lake variables' relationship(s) with other variables. For example, we could use existing forecasts about the weather to generate forecasts about the reservoir variables.
 
 To start, we will produce forecasts for just one of these depths - focal depth at fcre, 1.6 m.
 
@@ -181,7 +181,7 @@ targets <- targets %>%
 
 # Introducing co-variates
 
-One important step to overcome when thinking about generating forecasts is to include co-variates in the model. A water temperature forecast, for example, may be benefit from information about past and future weather. Data are available from OpenMeteo API, and a simple R package is available to access them. The function requires you to specify the location of the site you are interested in, the number of days into the past and future, and the model you want the forecast from.
+One important step to address when thinking about generating forecasts is to include co-variates in the model. A water temperature forecast, for example, may be benefit from information about past and future weather. Data are available from OpenMeteo API, and a simple R package is available to access them. The function requires you to specify the location of the site you are interested in, the number of days into the past and future, and the model you want to use to forecast.
 
 Read more about what variables are available and how to use the R functions [here](https://github.com/FLARE-forecast/RopenMeteo)
 
@@ -210,7 +210,7 @@ weather_dat <- RopenMeteo::get_ensemble_forecast(
   longitude = long,
   forecast_days = 30, # days into the future
   past_days = 60, # past days that can be used for model fitting
-  model = "gfs_seamless", # this is the NOAA gefs ensemble model
+  model = "gfs_seamless", # this is the NOAA GEFS ensemble model
   variables = c("temperature_2m")) |>
   
   # function to convert to EFI standard
@@ -227,7 +227,7 @@ ggplot(weather_dat, aes(x=datetime, y=prediction)) +
   facet_wrap(~variable, scales = 'free')
 ```
 
-To generate a daily water temperature forecast we will use a daily water temperature to train and run our model. This is calculated from the hourly data we have but we retain the ensemble members as a source of driver uncertainty.
+To generate a daily water temperature forecast, we will use a daily water temperature to train and run our model. This is calculated from the hourly data we have but retains the ensemble members as a source of driver uncertainty.
 
 ```{r}
 # get daily means
@@ -237,7 +237,7 @@ daily_weather <- weather_dat |>
   summarise(prediction = mean(prediction))
 ```
 
-We will separate the data into `historic_weather` for training/calibration and then `future_weather` to generate a forecast. We will also convert to Celsius from Kelvin. For the historic data we do not need the individual ensemble members, and will train with the ensemble mean.
+We will separate the data into `historic_weather` for training/calibration and then `future_weather` to generate a forecast. We will also convert to Celsius from Kelvin. For the historical data we do not need the individual ensemble members, and will train with the ensemble mean.
 
 ```{r}
 # split it into historic and future
@@ -258,9 +258,9 @@ future_weather <- daily_weather |>
 
 ```
 
-# Linear model with covariates
+# Linear model with co-variates
 
-We will fit a simple linear model between historic air temperature and the water temperature targets data. Using this model we can then use our future forecasts of air temperature (all 31 ensembles) to estimate water temperature at each site. The ensemble weather forecast will therefore propagate uncertainty into the water temperature forecast and give an estimate of driving data uncertainty.
+We will fit a simple linear model between historical air temperature and the water temperature targets data. Using this model we can then use our future forecasts of air temperature (all 31 ensembles from NOAA GEFS) to estimate water temperature at each site. The ensemble weather forecast will therefore propagate uncertainty into the water temperature forecast and give an estimate of driving data uncertainty.
 
 We will start by joining the historic weather data with the targets to aid in fitting the linear model.
 
@@ -273,7 +273,7 @@ targets_lm <- targets |>
 tail(targets_lm)
 ```
 
-To fit the linear model we use the base R `lm()` but there are also methods to fit linear (and non-linear) models in the `fable::` package. You can explore the [documentation](https://otexts.com/fpp3/regression.html) for more information on the `fable::TSLM()` function.
+To fit the linear model, we use the base R `lm()` but there are also methods to fit linear (and non-linear) models in the `fable::` package. You can explore the [documentation](https://otexts.com/fpp3/regression.html) for more information on the `fable::TSLM()` function.
 
 ```{r}
 
@@ -349,7 +349,7 @@ temp_lm_forecast_standard <- temp_lm_forecast %>%
 
 ## Submit forecast
 
-Files need to be in the correct format for submission. The forecast organizers have created tools to help aid in the submission process. These tools can be downloaded from Github using `remotes::install_github('LTREB-reservoirs/vera4castHelpers')`. These include functions for submitting, scoring and reading forecasts:
+Files need to be in the correct format for submission. The forecast organizers have created tools to help aid in the submission process. These tools can be downloaded from Github using `remotes::install_github('LTREB-reservoirs/vera4castHelpers')`. These include functions for submitting, scoring, and reading forecasts:
 
 -   `submit()` - submit the forecast file to the VERA Challenge, where it will be scored
 -   `forecast_output_validator()` - check the file is in the correct format to be submitted
@@ -372,7 +372,7 @@ if (dir.exists(save_here)) {
 vera4castHelpers::submit(forecast_file = forecast_file)
 ```
 
-Is the linear model a reasonable relationship between air temperature and water temperature? Would some non-linear relationship be better? What about using yesterday's air and water temperatures to predict tomorrow? Or including additional parameters? There's a lot of variability in water temperatures unexplained by air temperature alone.
+Is the linear model a reasonable relationship between air temperature and water temperature? Would a non-linear relationship be better? What about using yesterday's air and water temperatures to predict tomorrow? Or including additional parameters? There's a lot of variability in water temperatures unexplained by air temperature alone.
 
 ```{r, echo=F, warning=F}
 ggplot(targets_lm, aes(x=air_temperature, y= Temp_C_mean, colour = site_id)) +
@@ -387,7 +387,7 @@ Possible modifications to the simple linear model:
 
 -   Include additional weather co-variates in the linear model. List them in the `get_ensemble_forecast()` function
 -   Specify a non-linear relationship
--   Try forecasting another variable - could you use your water temperature to estimate dissolved oxygen concentration at the surface?
+-   Try forecasting another variable - could you use your water temperature to estimate dissolved oxygen concentration at the surface? To learn more about the other focal variables, see [here](https://www.ltreb-reservoirs.org/vera4cast/targets.html)
 -   Include a lag in the predictors
 -   Add another source of uncertainty - what are the errors in the linear model?
 
