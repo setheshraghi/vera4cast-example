@@ -74,7 +74,7 @@ Note: if you move this file or want to use a script that is stored elsewhere in 
 
 ### 4.2 Enable Actions
 
-In Github, go to your repository and navigate to the ACTIONS tab and make sure they are enabled. If they're not go to Settings \> Actions \> General and check the Allow actions and reusable workflows.
+In Github, go to your repository and navigate to the ACTIONS tab and make sure they are enabled. If you don't see an Actions tab (it should be between Pull Requests and Projects) go to Settings \> Actions \> General and check the Allow actions and reusable workflows.
 
 ### 4.3 Test the Action
 
