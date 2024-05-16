@@ -13,10 +13,10 @@
 -   [5 Linear model with co-variates](#linear-model-with-co-variates)
     -   [5.1 Convert to forecast standard for
         submission](#convert-to-forecast-standard-for-submission)
-    -   [5.2 Submit forecast](#submit-forecast)
-    -   [5.3 TASKS](#tasks)
-    -   [5.4 Register your participation](#register-your-participation)
-    -   [5.5 What’s next?](#whats-next)
+-   [6 Submit forecast](#submit-forecast)
+-   [7 TASKS](#tasks)
+-   [8 Register your participation](#register-your-participation)
+-   [9 What’s next?](#whats-next)
 
 # 1 This VERA tutorial:
 
@@ -25,7 +25,7 @@ ecological forecasts, specifically for submission to the Virginia
 Ecoforecast Reservoir Analysis (VERA) Forecast Challenge. The materials
 are modified from those initially developed for the EFI-NEON Forecast
 Challenge (found [here](https://zenodo.org/records/8316966)). To learn
-more about the VERA Forecast Challenge, see our
+more about the VERA Forecast Challenge (see our
 [website](https://www.ltreb-reservoirs.org/vera4cast/)).
 
 The development of these materials has been supported by NSF grants
@@ -46,6 +46,7 @@ The following code chunk should be run to install packages.
 install.packages('remotes')
 install.packages('tidyverse') # collection of R packages for data manipulation, analysis, and visualisation
 install.packages('lubridate') # working with dates and times
+install.packages('here')
 
 remotes::install_github('FLARE-forecast/RopenMeteo') # R interface with API OpenMeteo - weather forecasts
 remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist with forecast submission
@@ -55,28 +56,8 @@ remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist
 library(tidyverse)
 ```
 
-    ## Warning: package 'tidyverse' was built under R version 4.2.3
-
-    ## Warning: package 'ggplot2' was built under R version 4.2.3
-
-    ## Warning: package 'tibble' was built under R version 4.2.3
-
-    ## Warning: package 'tidyr' was built under R version 4.2.3
-
-    ## Warning: package 'readr' was built under R version 4.2.3
-
-    ## Warning: package 'purrr' was built under R version 4.2.3
-
-    ## Warning: package 'dplyr' was built under R version 4.2.3
-
-    ## Warning: package 'stringr' was built under R version 4.2.3
-
-    ## Warning: package 'forcats' was built under R version 4.2.3
-
-    ## Warning: package 'lubridate' was built under R version 4.2.3
-
     ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ## ✔ dplyr     1.1.3     ✔ readr     2.1.4
+    ## ✔ dplyr     1.1.4     ✔ readr     2.1.5
     ## ✔ forcats   1.0.0     ✔ stringr   1.5.1
     ## ✔ ggplot2   3.5.0     ✔ tibble    3.2.1
     ## ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
@@ -88,6 +69,7 @@ library(tidyverse)
 
 ``` r
 library(lubridate)
+library(ggplot2); theme_set(theme_bw())
 ```
 
 If you do not wish to run the code yourself, you can alternatively
@@ -227,7 +209,7 @@ site_list <- read_csv("https://raw.githubusercontent.com/LTREB-reservoirs/vera4c
 
 Let’s take a look at the targets data!
 
-    ## Rows: 95,706
+    ## Rows: 100,823
     ## Columns: 7
     ## $ project_id  <chr> "vera4cast", "vera4cast", "vera4cast", "vera4cast", "vera4…
     ## $ site_id     <chr> "fcre", "fcre", "fcre", "fcre", "fcre", "fcre", "fcre", "f…
@@ -252,7 +234,7 @@ targets <- targets %>%
 targets |> distinct(variable)
 ```
 
-    ## # A tibble: 25 × 1
+    ## # A tibble: 33 × 1
     ##    variable             
     ##    <chr>                
     ##  1 Temp_C_mean          
@@ -265,7 +247,7 @@ targets |> distinct(variable)
     ##  8 DOsat_percent_mean   
     ##  9 GreenAlgae_ugL_sample
     ## 10 Bluegreens_ugL_sample
-    ## # ℹ 15 more rows
+    ## # ℹ 23 more rows
 
 There are a number of different physical, chemical, and biological
 variables with observations at fcre. We will start by just looking at
@@ -439,12 +421,12 @@ tail(targets_lm)
     ## # A tibble: 6 × 7
     ##   project_id site_id datetime            duration depth_m Temp_C_mean
     ##   <chr>      <chr>   <dttm>              <chr>      <dbl>       <dbl>
-    ## 1 vera4cast  fcre    2024-05-09 00:00:00 P1D          1.6        20.4
-    ## 2 vera4cast  fcre    2024-05-10 00:00:00 P1D          1.6        20.8
-    ## 3 vera4cast  fcre    2024-05-11 00:00:00 P1D          1.6        20.1
-    ## 4 vera4cast  fcre    2024-05-12 00:00:00 P1D          1.6        19.8
-    ## 5 vera4cast  fcre    2024-05-13 00:00:00 P1D          1.6        19.7
-    ## 6 vera4cast  fcre    2024-05-14 00:00:00 P1D          1.6        19.6
+    ## 1 vera4cast  fcre    2024-05-10 00:00:00 P1D          1.6        20.8
+    ## 2 vera4cast  fcre    2024-05-11 00:00:00 P1D          1.6        20.1
+    ## 3 vera4cast  fcre    2024-05-12 00:00:00 P1D          1.6        19.8
+    ## 4 vera4cast  fcre    2024-05-13 00:00:00 P1D          1.6        19.7
+    ## 5 vera4cast  fcre    2024-05-14 00:00:00 P1D          1.6        19.6
+    ## 6 vera4cast  fcre    2024-05-15 00:00:00 P1D          1.6        19.1
     ## # ℹ 1 more variable: air_temperature <dbl>
 
 To fit the linear model, we use the base R `lm()` but there are also
@@ -466,7 +448,7 @@ print(fit)
     ## 
     ## Coefficients:
     ##                (Intercept)  targets_lm$air_temperature  
-    ##                    20.2072                     -0.0187
+    ##                   19.34324                     0.03789
 
 ``` r
 # Use the fitted linear model to forecast water temperature for each ensemble member
@@ -522,7 +504,7 @@ temp_lm_forecast_standard <- temp_lm_forecast %>%
   select(datetime, reference_datetime, site_id, duration, family, parameter, variable, prediction, depth_m, model_id, project_id)
 ```
 
-## 5.2 Submit forecast
+# 6 Submit forecast
 
 Files need to be in the correct format for submission. The forecast
 organizers have created tools to help aid in the submission process.
@@ -563,11 +545,11 @@ water temperatures unexplained by air temperature alone.
 ![](tutorial_files/figure-markdown_github/unnamed-chunk-20-1.png)
 
 Note: that this is a model built on only a very short period of historic
-weather data. Other historic weather data is available from Open Meteo
+weather data! Other historic weather data is available from Open Meteo
 (see the [ROpen-Meteo
 package](www.github.com/FLARE-forecast/RopenMeteo)).
 
-## 5.3 TASKS
+# 7 TASKS
 
 Possible modifications to the simple linear model:
 
@@ -586,7 +568,7 @@ Until you start submitting ‘real’ forecasts you can (should) keep
 `example` in the model_id. These forecasts are processed and scored but
 are not retained for longer than 1 month.
 
-## 5.4 Register your participation
+# 8 Register your participation
 
 It’s really important that once you start submitting forecasts to the
 Challenge that you register your participation. You will not be able to
@@ -597,9 +579,12 @@ model_id, with associated metadata. You should register
 Read more on the VERA Forecast Challenge website
 <https://www.ltreb-reservoirs.org/vera4cast/instructions.html>.
 
-## 5.5 What’s next?
+# 9 What’s next?
 
 More information and some helpful materials about adding additional
 sources of uncertainty and developing your forecasts can be found on the
 [VERA
 website](https://www.ltreb-reservoirs.org/vera4cast/learn-more.html).
+
+Once you’re happy with your model, you can follow the instructions in
+the `forecast_code` directory to start submitting automated forecasts.

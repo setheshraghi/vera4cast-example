@@ -2,13 +2,14 @@
 generate_example_forecast <- function(forecast_date, # a recommended argument so you can pass the date to the function
                                       model_id,
                                       targets_url, # where are the targets you are forecasting?
-                                      var, # what variable(s)?
-                                      site, # what site(s)
+                                      var, # what variable?
+                                      site, # what site,
+                                      lat, long,
                                       forecast_depths = 'focal',
                                       project_id = 'vera4cast') {
 
   # Put your forecast generating code in here, and add/remove arguments as needed.
-  # Forecast date should not be hard coded
+  # Forecast date should *not* be hard coded
   # This is an example function that also grabs weather forecast information to be used as co-variates
 
   if (site == 'fcre' & forecast_depths == 'focal') {
@@ -23,9 +24,9 @@ generate_example_forecast <- function(forecast_date, # a recommended argument so
   # Get targets
   message('Getting targets')
   targets <- readr::read_csv(targets_url, show_col_types = F) |>
-    filter(variable %in% var,
-           site_id %in% site,
-           depth_m %in% forecast_depths,
+    filter(variable == var,
+           site_id == site,
+           depth_m == forecast_depths,
            datetime < forecast_date)
   #-------------------------------------
 
@@ -33,10 +34,28 @@ generate_example_forecast <- function(forecast_date, # a recommended argument so
   message('Getting weather')
   # uses the RopenMeteo function to grab weather from the sites
   # and you can specify the length of the future period and number of days in the past
-    # you can modify the data that are collected in the get_daily_weather function
-    # or if you want to generate an hourly forecast, you can use get_hourly_weather
-  weather_dat <- site |>
-    map_dfr(get_daily_weather, site_list = site_list, past = 60, future = 30, vars = "temperature_2m")
+    # you can modify the data that are collected
+
+  # Collect th relevant weather data
+  weather_dat <- RopenMeteo::get_ensemble_forecast(
+    latitude = lat,
+    longitude = long,
+    forecast_days = 30, # days into the future
+    past_days = 60, # past days that can be used for model fitting
+    model = "gfs_seamless",
+    variables = "temperature_2m") |>
+
+    # convert to a standardised forecast
+    RopenMeteo::convert_to_efi_standard() |>
+    mutate(site_id = site,
+           datetime = as_date(datetime)) |>
+    group_by(datetime, site_id, variable, parameter) |>
+
+    #calcuate the daily mean
+    summarise(prediction = mean(prediction), .groups = 'drop')
+  #-------------------------------------
+
+
   #-------------------------------------
 
   # split it into historic and future
@@ -44,7 +63,7 @@ generate_example_forecast <- function(forecast_date, # a recommended argument so
     filter(datetime < forecast_date) |>
     # calculate a daily mean (remove ensemble)
     group_by(datetime, variable, site_id) |>
-    summarise(prediction = mean(prediction)) |>
+    summarise(prediction = mean(prediction), .groups = 'drop') |>
     pivot_wider(names_from = variable, values_from = prediction) |>
     mutate(air_temperature = air_temperature - 273.15)
 
@@ -58,7 +77,7 @@ generate_example_forecast <- function(forecast_date, # a recommended argument so
   message('Fitting model')
   fit_df <- targets |>
     pivot_wider(names_from = variable, values_from = observation) |>
-    left_join(historic_weather)
+    left_join(historic_weather, by = join_by(site_id, datetime))
 
   model_fit <- lm(fit_df$Temp_C_mean ~ fit_df$air_temperature)
   #-------------------------------------

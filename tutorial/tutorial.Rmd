@@ -33,6 +33,7 @@ The following code chunk should be run to install packages.
 install.packages('remotes')
 install.packages('tidyverse') # collection of R packages for data manipulation, analysis, and visualisation
 install.packages('lubridate') # working with dates and times
+install.packages('here')
 
 remotes::install_github('FLARE-forecast/RopenMeteo') # R interface with API OpenMeteo - weather forecasts
 remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist with forecast submission
@@ -41,6 +42,7 @@ remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(ggplot2); theme_set(theme_bw())
 ```
 
 If you do not wish to run the code yourself, you can alternatively follow along via the markdown document (tutorial.md).
@@ -160,7 +162,7 @@ targets %>%
   filter(variable == 'Temp_C_mean') %>%
   ggplot(., aes(x = datetime, y = observation)) +
   geom_point() +
-  theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   facet_wrap(~depth_m) +
   labs(title = 'water temperature')
 
@@ -224,7 +226,7 @@ This is an ensemble hourly forecast (multiple (31) realisations of conditions). 
 ```{r echo = F, fig.cap = c('Figure: historic and future NOAA air temeprature forecasts at lake sites', 'Figure: last two months of historic air temperature forecasts and 35 day ahead forecast')}
 ggplot(weather_dat, aes(x=datetime, y=prediction)) +
   geom_line(aes(group = parameter), alpha = 0.4)+
-  facet_wrap(~variable, scales = 'free')
+  facet_wrap(~variable, scales = 'free') 
 ```
 
 To generate a daily water temperature forecast, we will use a daily water temperature to train and run our model. This is calculated from the hourly data we have but retains the ensemble members as a source of driver uncertainty.
@@ -356,7 +358,7 @@ temp_lm_forecast_standard <- temp_lm_forecast %>%
   select(datetime, reference_datetime, site_id, duration, family, parameter, variable, prediction, depth_m, model_id, project_id)
 ```
 
-## Submit forecast
+# Submit forecast
 
 Files need to be in the correct format for submission. The forecast organizers have created tools to help aid in the submission process. These tools can be downloaded from Github using `remotes::install_github('LTREB-reservoirs/vera4castHelpers')`. These include functions for submitting, scoring, and reading forecasts:
 
@@ -384,15 +386,14 @@ vera4castHelpers::submit(forecast_file = forecast_file)
 Is the linear model a reasonable relationship between air temperature and water temperature? Would a non-linear relationship be better? What about using yesterday's air and water temperatures to predict tomorrow? Or including additional parameters? There's a lot of variability in water temperatures unexplained by air temperature alone.
 
 ```{r, echo=F, warning=F}
-ggplot(targets_lm, aes(x=air_temperature, y= Temp_C_mean, colour = site_id)) +
+ggplot(targets_lm, aes(x=air_temperature, y= Temp_C_mean)) +
   geom_point(alpha = 0.5) +
-  geom_smooth(method = 'lm') +
-  theme_bw()
+  geom_smooth(method = 'lm', se = F)
 ```
 
-Note: that this is a model built on only a very short period of historic weather data. Other historic weather data is available from Open Meteo (see the [ROpen-Meteo package](www.github.com/FLARE-forecast/RopenMeteo)).
+Note: that this is a model built on only a very short period of historic weather data! Other historic weather data is available from Open Meteo (see the [ROpen-Meteo package](www.github.com/FLARE-forecast/RopenMeteo)).
 
-## TASKS
+# TASKS
 
 Possible modifications to the simple linear model:
 
@@ -404,12 +405,14 @@ Possible modifications to the simple linear model:
 
 Until you start submitting 'real' forecasts you can (should) keep `example` in the model_id. These forecasts are processed and scored but are not retained for longer than 1 month.
 
-## Register your participation
+# Register your participation
 
 It's really important that once you start submitting forecasts to the Challenge that you register your participation. You will not be able to submit a forecast that is not an example, without first registering the model_id, with associated metadata. You should register [here](https://forms.gle/kg2Vkpho9BoMXSy57).
 
 Read more on the VERA Forecast Challenge website <https://www.ltreb-reservoirs.org/vera4cast/instructions.html>.
 
-## What's next?
+# What's next?
 
 More information and some helpful materials about adding additional sources of uncertainty and developing your forecasts can be found on the [VERA website](https://www.ltreb-reservoirs.org/vera4cast/learn-more.html).
+
+Once you're happy with your model, you can follow the instructions in the `forecast_code` directory to start submitting automated forecasts. 
