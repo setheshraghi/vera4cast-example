@@ -42,6 +42,7 @@ remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(ggplot2); theme_set(theme_bw())
 ```
 
 If you do not wish to run the code yourself, you can alternatively follow along via the markdown document (tutorial.md).
@@ -161,7 +162,7 @@ targets %>%
   filter(variable == 'Temp_C_mean') %>%
   ggplot(., aes(x = datetime, y = observation)) +
   geom_point() +
-  theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   facet_wrap(~depth_m) +
   labs(title = 'water temperature')
 
@@ -225,7 +226,7 @@ This is an ensemble hourly forecast (multiple (31) realisations of conditions). 
 ```{r echo = F, fig.cap = c('Figure: historic and future NOAA air temeprature forecasts at lake sites', 'Figure: last two months of historic air temperature forecasts and 35 day ahead forecast')}
 ggplot(weather_dat, aes(x=datetime, y=prediction)) +
   geom_line(aes(group = parameter), alpha = 0.4)+
-  facet_wrap(~variable, scales = 'free')
+  facet_wrap(~variable, scales = 'free') 
 ```
 
 To generate a daily water temperature forecast, we will use a daily water temperature to train and run our model. This is calculated from the hourly data we have but retains the ensemble members as a source of driver uncertainty.
@@ -385,13 +386,12 @@ vera4castHelpers::submit(forecast_file = forecast_file)
 Is the linear model a reasonable relationship between air temperature and water temperature? Would a non-linear relationship be better? What about using yesterday's air and water temperatures to predict tomorrow? Or including additional parameters? There's a lot of variability in water temperatures unexplained by air temperature alone.
 
 ```{r, echo=F, warning=F}
-ggplot(targets_lm, aes(x=air_temperature, y= Temp_C_mean, colour = site_id)) +
+ggplot(targets_lm, aes(x=air_temperature, y= Temp_C_mean)) +
   geom_point(alpha = 0.5) +
-  geom_smooth(method = 'lm') +
-  theme_bw()
+  geom_smooth(method = 'lm', se = F)
 ```
 
-Note: that this is a model built on only a very short period of historic weather data. Other historic weather data is available from Open Meteo (see the [ROpen-Meteo package](www.github.com/FLARE-forecast/RopenMeteo)).
+Note: that this is a model built on only a very short period of historic weather data! Other historic weather data is available from Open Meteo (see the [ROpen-Meteo package](www.github.com/FLARE-forecast/RopenMeteo)).
 
 # TASKS
 
