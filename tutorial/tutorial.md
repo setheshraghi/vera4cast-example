@@ -46,6 +46,7 @@ The following code chunk should be run to install packages.
 install.packages('remotes')
 install.packages('tidyverse') # collection of R packages for data manipulation, analysis, and visualisation
 install.packages('lubridate') # working with dates and times
+install.packages('here')
 
 remotes::install_github('FLARE-forecast/RopenMeteo') # R interface with API OpenMeteo - weather forecasts
 remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist with forecast submission
@@ -68,6 +69,7 @@ library(tidyverse)
 
 ``` r
 library(lubridate)
+library(ggplot2); theme_set(theme_bw())
 ```
 
 If you do not wish to run the code yourself, you can alternatively
@@ -543,7 +545,7 @@ water temperatures unexplained by air temperature alone.
 ![](tutorial_files/figure-markdown_github/unnamed-chunk-20-1.png)
 
 Note: that this is a model built on only a very short period of historic
-weather data. Other historic weather data is available from Open Meteo
+weather data! Other historic weather data is available from Open Meteo
 (see the [ROpen-Meteo
 package](www.github.com/FLARE-forecast/RopenMeteo)).
 
