@@ -39,10 +39,11 @@ remotes::install_github('FLARE-forecast/RopenMeteo') # R interface with API Open
 remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist with forecast submission
 ```
 
-```{r}
+```{r warning=FALSE}
 library(tidyverse)
 library(lubridate)
 library(ggplot2); theme_set(theme_bw())
+library(vera4castHelpers)
 ```
 
 If you do not wish to run the code yourself, you can alternatively follow along via the markdown document (tutorial.md).
@@ -55,11 +56,11 @@ The VERA Forecast Challenge is one component of the Virginia Reservoirs LTREB pr
 
 ## The Challenge
 
-What: Freshwater water quality.
+**What**: Freshwater water quality.
 
-Where: Two Virginia reservoirs (managed by the Western Virginia Water Authority) and the stream that connects them. To learn more about these freshwater ecosystems, see [here](https://www.ltreb-reservoirs.org/reservoirs/).
+**Where**: Two Virginia reservoirs (managed by the Western Virginia Water Authority) and the stream that connects them. To learn more about these freshwater ecosystems, see [here](https://www.ltreb-reservoirs.org/reservoirs/).
 
-When: Daily forecasts for at least 30 days-ahead in the future. New forecast submissions that are continuously updated with observations as soon as they become available are accepted daily. The only requirement is that submissions are predictions of the future at the time the forecast is submitted.
+**When**: Daily forecasts for at least 30 days-ahead in the future. New forecast submissions that are continuously updated with observations as soon as they become available are accepted daily. The only requirement is that submissions are predictions of the future at the time the forecast is submitted.
 
 For the VERA Challenge, you can chose to submit to any combination of sites and variables using any method. Find more information about the targets available [here](https://www.ltreb-reservoirs.org/vera4cast/targets.html).
 
@@ -113,7 +114,7 @@ If you are submitting a forecast that is not in the supported list above, we rec
 
 ## Read in the data
 
-We start forecasting by first looking at the historical data - called the *targets*. These data are available in near real-time, with the latency of approximately 24-48 hrs. Here is how you read in the data from the targets file available:
+We start forecasting by first looking at the historicalal data - called the *targets*. These data are available in near real-time, with the latency of approximately 24-48 hrs. Here is how you read in the data from the targets file available:
 
 ```{r eval=TRUE, echo = TRUE, error=FALSE, warning=FALSE, message=FALSE}
 #read in the targets data
@@ -144,7 +145,7 @@ site_list <- site_list %>%
 targets <- targets %>%
   filter(site_id == 'fcre')
 
-targets |> distinct(variable)
+targets |> distinct(variable) |> pull()
 ```
 
 There are a number of different physical, chemical, and biological variables with observations at fcre. We will start by just looking at P1D Temp_C_mean (mean daily water temperatures).
@@ -155,9 +156,9 @@ targets <- targets %>%
          duration == 'P1D')
 ```
 
-## Visualise the data
+## Visualize the data
 
-```{r eval = T, echo = F, warning=FALSE, fig.dim=c(10,10), fig.cap='Figure: Temperature targets data at FCR'}
+```{r targets, eval = T, echo = F, warning=FALSE, fig.dim=c(10,10), fig.cap='Figure: Temperature targets data at FCR'}
 targets %>%
   filter(variable == 'Temp_C_mean') %>%
   ggplot(., aes(x = datetime, y = observation)) +
@@ -171,7 +172,7 @@ targets %>%
 We can think about what type of models might be useful to predict water temperature. Below are descriptions of three simple models to get you started forecasting:
 
 -   We could use information about current conditions to predict the next day. What is happening today is usually a good predictor of what will happen tomorrow (persistence model).
--   We could also think about what the historical data tells us about reservoir dynamics this time of year. For example, conditions in January this year are likely to be similar to January last year (climatology/day-of-year model)
+-   We could also think about what the historicalal data tells us about reservoir dynamics this time of year. For example, conditions in January this year are likely to be similar to January last year (climatology/day-of-year model)
 -   We could also look at the lake variables' relationship(s) with other variables. For example, we could use existing forecasts about the weather to generate forecasts about the reservoir variables.
 
 To start, we will produce forecasts for just one of these depths - the focal depth at fcre, 1.6 m.
@@ -183,83 +184,99 @@ targets <- targets %>%
 
 # Introducing co-variates
 
-One important step to address when thinking about generating forecasts is to include co-variates in the model. A water temperature forecast, for example, may be benefit from information about past and future weather. Data are available from OpenMeteo API, and a simple R package is available to access them. The function requires you to specify the location of the site you are interested in, the number of days into the past and future, and the model you want to use to forecast.
+One important step to overcome when thinking about generating forecasts is to include co-variates in the model. A water temperature forecast, for example, may be benefit from information about past and future weather. The `vera4castHelpers` package includes functions for downloading past and future NOAA weather forecasts for the VERA sites. The 3 types of data are as follows:
 
-Read more about what variables are available and how to use the R functions [here](https://github.com/FLARE-forecast/RopenMeteo)
+-   stage_1: raw forecasts - 31 member ensemble forecasts at 3 hr intervals for the first 10 days, and 6 hr intervals for up to 35 days at the NEON sites.
+-   stage_2: a processed version of Stage 1 in which fluxes are standardized to per second rates, fluxes and states are interpolated to 1 hour intervals and variables are renamed to match conventions. We recommend this for obtaining future weather. Future weather forecasts include a 30-member ensemble of equally likely future weather conditions.
+-   stage_3: can be viewed as the "historicalal" weather and is combination of day 1 weather forecasts (i.e., when the forecasts are most accurate).
+
+This code create a connection to the dataset hosted remotely at an S3 storage location. To download the data you have to tell the function to `collect()` it. These data set can be subsetted and filtered using `dplyr` functions prior to download to limit the memory usage.
+
+You can read more about the NOAA forecasts available for the NEON sites [here:](https://projects.ecoforecast.org/neon4cast-docs/Shared-Forecast-Drivers.html)
 
 ## Download co-variates
 
-### Download historic data
+### Download historical weather forecasts
 
-We will generate a water temperature forecast using `air_temperature` as a co-variate. We can get the location of FCR from the `site_list` table. The maximum number of past days available from OpenMeteo API is \~90 days. If you need more historical days for model calibration and testing, historical data are available through OpenMeteo's [historical weather API](https://open-meteo.com/en/docs/historical-weather-api). The past data are a stacked 1 day-ahead pseudo-observation.
-
-The package also includes a function to convert to EFI standard format.
+We will generate a water temperature forecast using `air_temperature` as a co-variate. The following code chunk connects to the remote location, filters the dataset to the sites and variables of interest and then collects into our local environment.
 
 ```{r, message=FALSE}
+# past stacked weather
+historical_weather_s3 <- vera4castHelpers::noaa_stage3()
 
-lat <- site_list |>
-  filter(site_id == 'fcre') |>
-  select(latitude) |> 
-  pull()
+variables <- c("air_temperature")
 
-long <-  site_list |>
-  filter(site_id == 'fcre') |>
-  select(longitude) |>  
-  pull()
+historical_weather <- historical_weather_s3  |> 
+  dplyr::filter(site_id %in% site_list$site_id,
+                variable %in% variables) |> 
+  dplyr::collect()
 
-weather_dat <- RopenMeteo::get_ensemble_forecast(
-  latitude = lat,
-  longitude = long,
-  forecast_days = 30, # days into the future
-  past_days = 16, # past days that can be used for model fitting (currently up to 16 days)
-  model = "gfs_seamless", # this is the NOAA GEFS ensemble model
-  variables = c("temperature_2m")) |>
-  
-  # function to convert to EFI standard
-  RopenMeteo::convert_to_efi_standard() |>
-  mutate(site_id = 'fcre')
+historical_weather
 
 ```
 
-This is an ensemble hourly forecast (multiple (31) realisations of conditions). Now we have a timeseries of historic data and a 31 member ensemble forecast of future air temperatures.
-
-```{r echo = F, fig.cap = c('Figure: historic and future NOAA air temeprature forecasts at lake sites', 'Figure: last two months of historic air temperature forecasts and 35 day ahead forecast')}
-ggplot(weather_dat, aes(x=datetime, y=prediction)) +
-  geom_line(aes(group = parameter), alpha = 0.4)+
-  facet_wrap(~variable, scales = 'free') 
-```
-
-To generate a daily water temperature forecast, we will use a daily water temperature to train and run our model. This is calculated from the hourly data we have but retains the ensemble members as a source of driver uncertainty.
+This is an hourly stacked ensemble of the one day ahead forecasts. We can take a mean of these ensembles to get an estimate of mean daily historical conditions. For the historical data we do not need the individual ensemble members, and will train with the ensemble mean.
 
 ```{r}
-# get daily means
-daily_weather <- weather_dat |> 
-  mutate(datetime = as_date(datetime)) |>
-  group_by(datetime, site_id, variable, parameter) |>
-  summarise(prediction = mean(prediction), .groups = 'drop')
+# aggregate the past to mean values
+historical_weather <- historical_weather |> 
+  mutate(datetime = as_date(datetime)) |> 
+  group_by(datetime, site_id, variable) |> 
+  summarize(prediction = mean(prediction, na.rm = TRUE), .groups = "drop") 
 
-ggplot(daily_weather, aes(x=datetime, y=prediction)) +
-  geom_line(aes(group = parameter), alpha = 0.4)+
-  facet_wrap(~variable, scales = 'free')
+historical_weather
 ```
 
-We will separate the data into `historic_weather` for training/calibration and then `future_weather` to generate a forecast. We will also convert to Celsius from Kelvin. For the historical data we do not need the individual ensemble members, and will train with the ensemble mean.
+### Download future weather forecasts
+
+We can then look at the future weather forecasts in the same way but using the `noaa_stage2()`. The forecast becomes available from NOAA at 5am UTC the following day, so we need to use the air temperature forecast from yesterday (`noaa_date`) to make our real-time water quality forecasts.
+
+```{r, message=FALSE}
+forecast_date <- Sys.Date() 
+noaa_date <- forecast_date - days(1)
+
+future_weather_s3 <- vera4castHelpers::noaa_stage2(start_date = as.character(noaa_date))
+variables <- c("air_temperature")
+
+future_weather <- future_weather_s3 |> 
+  dplyr::filter(datetime >= forecast_date,
+                site_id %in% site_list$site_id,
+                variable %in% variables) |> 
+  collect()
+
+```
+
+We can use the individual ensemble member in our model to include driver uncertainty in the water temperature forecast. To generate a daily water temperature forecast, we will use a daily water temperature to train and run our model. This is calculated from the hourly data we have but retains the ensemble members as a source of driver uncertainty.
 
 ```{r}
-# split it into historic and future
-forecast_date <- Sys.Date()
+# aggregate the past to mean values
+future_weather <- future_weather |> 
+  mutate(datetime = as_date(datetime)) |> 
+  group_by(datetime, site_id, variable, parameter) |> # parameter is included in the grouping variables
+  summarize(prediction = mean(prediction, na.rm = TRUE), .groups = "drop") 
 
-historic_weather <- daily_weather |>
-  filter(datetime < forecast_date) |>
-  group_by(datetime, variable, site_id) |> 
-  # calculate the ensemble mean
-  summarise(prediction = mean(prediction), .groups = 'drop') |> 
+future_weather
+```
+
+```{r weather-data}
+ggplot(future_weather, aes(x=datetime, y=prediction)) +
+  geom_line(aes(group = parameter), alpha = 0.4)+
+  geom_line(data = historical_weather) +
+  facet_wrap(~variable, scales = 'free') +
+  coord_cartesian(xlim = c(forecast_date - 150, forecast_date + 30))
+```
+
+We have separate `historical_weather` for training/calibration and `future_weather` to generate a forecast. Finally, we will also convert to Celsius from Kelvin.
+
+```{r}
+
+
+historical_weather <- historical_weather |> 
   pivot_wider(names_from = variable, values_from = prediction) |>
   mutate(air_temperature = air_temperature - 273.15) # convert to degree C
 
 
-future_weather <- daily_weather |>
-  filter(datetime >= forecast_date) |>
+future_weather <- future_weather |>
   pivot_wider(names_from = variable, values_from = prediction) |>
   mutate(air_temperature = air_temperature - 273.15) # convert to degree C
 
@@ -269,12 +286,12 @@ future_weather <- daily_weather |>
 
 We will fit a simple linear model between historical air temperature and the water temperature targets data. Using this model we can then use our future forecasts of air temperature (all 31 ensembles from NOAA GEFS) to estimate water temperature at each site. The ensemble weather forecast will therefore propagate uncertainty into the water temperature forecast and give an estimate of driving data uncertainty.
 
-We will start by joining the historic weather data with the targets to aid in fitting the linear model.
+We will start by joining the historical weather data with the targets to aid in fitting the linear model.
 
 ```{r}
 targets_lm <- targets |> 
   pivot_wider(names_from = 'variable', values_from = 'observation') |> 
-  left_join(historic_weather, 
+  left_join(historical_weather, 
             by = c("datetime","site_id"))
 
 tail(targets_lm)
@@ -305,7 +322,7 @@ We now have 31 possible forecasts of water temperature at each site and each day
 
 Looking at the forecasts we produced:
 
-```{r, echo = F, warning = F}
+```{r wq-forecast, echo = F, warning = F}
 temp_lm_forecast %>% 
   filter(variable == 'Temp_C_mean') %>%
   ggplot(.,aes(x=datetime, y=prediction, group = parameter)) + 
@@ -379,19 +396,23 @@ if (dir.exists(save_here)) {
 
 ```
 
+
+```{r}
+vera4castHelpers::forecast_output_validator(forecast_file = forecast_file)
+```
+The checks show us that our forecast is valid and we can go ahead and submit it!
+
 ```{r eval = FALSE, echo = T}
 vera4castHelpers::submit(forecast_file = forecast_file)
 ```
 
 Is the linear model a reasonable relationship between air temperature and water temperature? Would a non-linear relationship be better? What about using yesterday's air and water temperatures to predict tomorrow? Or including additional parameters? There's a lot of variability in water temperatures unexplained by air temperature alone.
 
-```{r, echo=F, warning=F}
+```{r linear-model, echo=F, warning=F, message=FALSE}
 ggplot(targets_lm, aes(x=air_temperature, y= Temp_C_mean)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = 'lm', se = F)
 ```
-
-Note: that this is a model built on only a very short period of historic weather data! Other historic weather data is available from Open Meteo (see the [ROpen-Meteo package](www.github.com/FLARE-forecast/RopenMeteo)).
 
 # TASKS
 
@@ -415,4 +436,4 @@ Read more on the VERA Forecast Challenge website <https://www.ltreb-reservoirs.o
 
 More information and some helpful materials about adding additional sources of uncertainty and developing your forecasts can be found on the [VERA website](https://www.ltreb-reservoirs.org/vera4cast/learn-more.html).
 
-Once you're happy with your model, you can follow the instructions in the `forecast_code` directory to start submitting automated forecasts. 
+Once you're happy with your model, you can follow the instructions in the `forecast_code` directory to start submitting automated forecasts.

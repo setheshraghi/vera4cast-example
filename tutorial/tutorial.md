@@ -6,10 +6,13 @@
         -   [2.2.1 File format](#file-format)
 -   [3 The forecasting workflow](#the-forecasting-workflow)
     -   [3.1 Read in the data](#read-in-the-data)
-    -   [3.2 Visualise the data](#visualise-the-data)
+    -   [3.2 Visualize the data](#visualize-the-data)
 -   [4 Introducing co-variates](#introducing-co-variates)
     -   [4.1 Download co-variates](#download-co-variates)
-        -   [4.1.1 Download historic data](#download-historic-data)
+        -   [4.1.1 Download historical weather
+            forecasts](#download-historical-weather-forecasts)
+        -   [4.1.2 Download future weather
+            forecasts](#download-future-weather-forecasts)
 -   [5 Linear model with co-variates](#linear-model-with-co-variates)
     -   [5.1 Convert to forecast standard for
         submission](#convert-to-forecast-standard-for-submission)
@@ -57,7 +60,7 @@ library(tidyverse)
 ```
 
     ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ## ✔ dplyr     1.1.4     ✔ readr     2.1.5
+    ## ✔ dplyr     1.1.3     ✔ readr     2.1.4
     ## ✔ forcats   1.0.0     ✔ stringr   1.5.1
     ## ✔ ggplot2   3.5.0     ✔ tibble    3.2.1
     ## ✔ lubridate 1.9.3     ✔ tidyr     1.3.1
@@ -70,6 +73,7 @@ library(tidyverse)
 ``` r
 library(lubridate)
 library(ggplot2); theme_set(theme_bw())
+library(vera4castHelpers)
 ```
 
 If you do not wish to run the code yourself, you can alternatively
@@ -91,14 +95,14 @@ predictability.
 
 ## 2.1 The Challenge
 
-What: Freshwater water quality.
+**What**: Freshwater water quality.
 
-Where: Two Virginia reservoirs (managed by the Western Virginia Water
-Authority) and the stream that connects them. To learn more about these
-freshwater ecosystems, see
+**Where**: Two Virginia reservoirs (managed by the Western Virginia
+Water Authority) and the stream that connects them. To learn more about
+these freshwater ecosystems, see
 [here](https://www.ltreb-reservoirs.org/reservoirs/).
 
-When: Daily forecasts for at least 30 days-ahead in the future. New
+**When**: Daily forecasts for at least 30 days-ahead in the future. New
 forecast submissions that are continuously updated with observations as
 soon as they become available are accepted daily. The only requirement
 is that submissions are predictions of the future at the time the
@@ -186,7 +190,7 @@ documentation](https://www.ltreb-reservoirs.org/vera4cast/instructions.html#fore
 
 ## 3.1 Read in the data
 
-We start forecasting by first looking at the historical data - called
+We start forecasting by first looking at the historicalal data - called
 the *targets*. These data are available in near real-time, with the
 latency of approximately 24-48 hrs. Here is how you read in the data
 from the targets file available:
@@ -209,7 +213,7 @@ site_list <- read_csv("https://raw.githubusercontent.com/LTREB-reservoirs/vera4c
 
 Let’s take a look at the targets data!
 
-    ## Rows: 100,823
+    ## Rows: 126,619
     ## Columns: 7
     ## $ project_id  <chr> "vera4cast", "vera4cast", "vera4cast", "vera4cast", "vera4…
     ## $ site_id     <chr> "fcre", "fcre", "fcre", "fcre", "fcre", "fcre", "fcre", "f…
@@ -231,23 +235,42 @@ site_list <- site_list %>%
 targets <- targets %>%
   filter(site_id == 'fcre')
 
-targets |> distinct(variable)
+targets |> distinct(variable) |> pull()
 ```
 
-    ## # A tibble: 33 × 1
-    ##    variable             
-    ##    <chr>                
-    ##  1 Temp_C_mean          
-    ##  2 SpCond_uScm_mean     
-    ##  3 Chla_ugL_mean        
-    ##  4 fDOM_QSU_mean        
-    ##  5 Turbidity_FNU_mean   
-    ##  6 Bloom_binary_mean    
-    ##  7 DO_mgL_mean          
-    ##  8 DOsat_percent_mean   
-    ##  9 GreenAlgae_ugL_sample
-    ## 10 Bluegreens_ugL_sample
-    ## # ℹ 23 more rows
+    ##  [1] "Temp_C_mean"                         
+    ##  [2] "SpCond_uScm_mean"                    
+    ##  [3] "Chla_ugL_mean"                       
+    ##  [4] "fDOM_QSU_mean"                       
+    ##  [5] "Turbidity_FNU_mean"                  
+    ##  [6] "Bloom_binary_mean"                   
+    ##  [7] "DO_mgL_mean"                         
+    ##  [8] "DOsat_percent_mean"                  
+    ##  [9] "GreenAlgae_ugL_sample"               
+    ## [10] "Bluegreens_ugL_sample"               
+    ## [11] "BrownAlgae_ugL_sample"               
+    ## [12] "MixedAlgae_ugL_sample"               
+    ## [13] "TotalConc_ugL_sample"                
+    ## [14] "GreenAlgaeCM_ugL_sample"             
+    ## [15] "BluegreensCM_ugL_sample"             
+    ## [16] "BrownAlgaeCM_ugL_sample"             
+    ## [17] "MixedAlgaeCM_ugL_sample"             
+    ## [18] "TotalConcCM_ugL_sample"              
+    ## [19] "ChlorophyllMaximum_depth_sample"     
+    ## [20] "DeepChlorophyllMaximum_binary_sample"
+    ## [21] "Secchi_m_sample"                     
+    ## [22] "MOM_binary_sample"                   
+    ## [23] "ThermoclineDepth_m_mean"             
+    ## [24] "CO2flux_umolm2s_mean"                
+    ## [25] "CH4flux_umolm2s_mean"                
+    ## [26] "TN_ugL_sample"                       
+    ## [27] "TP_ugL_sample"                       
+    ## [28] "NH4_ugL_sample"                      
+    ## [29] "NO3NO2_ugL_sample"                   
+    ## [30] "SRP_ugL_sample"                      
+    ## [31] "DOC_mgL_sample"                      
+    ## [32] "CH4_umolL_sample"                    
+    ## [33] "CO2_umolL_sample"
 
 There are a number of different physical, chemical, and biological
 variables with observations at fcre. We will start by just looking at
@@ -259,10 +282,10 @@ targets <- targets %>%
          duration == 'P1D')
 ```
 
-## 3.2 Visualise the data
+## 3.2 Visualize the data
 
 <figure>
-<img src="tutorial_files/figure-markdown_github/unnamed-chunk-8-1.png"
+<img src="tutorial_files/figure-markdown_github/targets-1.png"
 alt="Figure: Temperature targets data at FCR" />
 <figcaption aria-hidden="true">Figure: Temperature targets data at
 FCR</figcaption>
@@ -275,7 +298,7 @@ started forecasting:
 -   We could use information about current conditions to predict the
     next day. What is happening today is usually a good predictor of
     what will happen tomorrow (persistence model).
--   We could also think about what the historical data tells us about
+-   We could also think about what the historicalal data tells us about
     reservoir dynamics this time of year. For example, conditions in
     January this year are likely to be similar to January last year
     (climatology/day-of-year model)
@@ -293,106 +316,177 @@ targets <- targets %>%
 
 # 4 Introducing co-variates
 
-One important step to address when thinking about generating forecasts
+One important step to overcome when thinking about generating forecasts
 is to include co-variates in the model. A water temperature forecast,
 for example, may be benefit from information about past and future
-weather. Data are available from OpenMeteo API, and a simple R package
-is available to access them. The function requires you to specify the
-location of the site you are interested in, the number of days into the
-past and future, and the model you want to use to forecast.
+weather. The `vera4castHelpers` package includes functions for
+downloading past and future NOAA weather forecasts for the VERA sites.
+The 3 types of data are as follows:
 
-Read more about what variables are available and how to use the R
-functions [here](https://github.com/FLARE-forecast/RopenMeteo)
+-   stage_1: raw forecasts - 31 member ensemble forecasts at 3 hr
+    intervals for the first 10 days, and 6 hr intervals for up to 35
+    days at the NEON sites.
+-   stage_2: a processed version of Stage 1 in which fluxes are
+    standardized to per second rates, fluxes and states are interpolated
+    to 1 hour intervals and variables are renamed to match conventions.
+    We recommend this for obtaining future weather. Future weather
+    forecasts include a 30-member ensemble of equally likely future
+    weather conditions.
+-   stage_3: can be viewed as the “historicalal” weather and is
+    combination of day 1 weather forecasts (i.e., when the forecasts are
+    most accurate).
+
+This code create a connection to the dataset hosted remotely at an S3
+storage location. To download the data you have to tell the function to
+`collect()` it. These data set can be subsetted and filtered using
+`dplyr` functions prior to download to limit the memory usage.
+
+You can read more about the NOAA forecasts available for the NEON sites
+[here:](https://projects.ecoforecast.org/neon4cast-docs/Shared-Forecast-Drivers.html)
 
 ## 4.1 Download co-variates
 
-### 4.1.1 Download historic data
+### 4.1.1 Download historical weather forecasts
 
 We will generate a water temperature forecast using `air_temperature` as
-a co-variate. We can get the location of FCR from the `site_list` table.
-The maximum number of past days available from OpenMeteo API is ~90
-days. If you need more historical days for model calibration and
-testing, historical data are available through OpenMeteo’s [historical
-weather API](https://open-meteo.com/en/docs/historical-weather-api). The
-past data are a stacked 1 day-ahead pseudo-observation.
-
-The package also includes a function to convert to EFI standard format.
+a co-variate. The following code chunk connects to the remote location,
+filters the dataset to the sites and variables of interest and then
+collects into our local environment.
 
 ``` r
-lat <- site_list |>
-  filter(site_id == 'fcre') |>
-  select(latitude) |> 
-  pull()
+# past stacked weather
+historical_weather_s3 <- vera4castHelpers::noaa_stage3()
 
-long <-  site_list |>
-  filter(site_id == 'fcre') |>
-  select(longitude) |>  
-  pull()
+variables <- c("air_temperature")
 
-weather_dat <- RopenMeteo::get_ensemble_forecast(
-  latitude = lat,
-  longitude = long,
-  forecast_days = 30, # days into the future
-  past_days = 16, # past days that can be used for model fitting (currently up to 16 days)
-  model = "gfs_seamless", # this is the NOAA GEFS ensemble model
-  variables = c("temperature_2m")) |>
-  
-  # function to convert to EFI standard
-  RopenMeteo::convert_to_efi_standard() |>
-  mutate(site_id = 'fcre')
+historical_weather <- historical_weather_s3  |> 
+  dplyr::filter(site_id %in% site_list$site_id,
+                variable %in% variables) |> 
+  dplyr::collect()
+
+historical_weather
 ```
 
-This is an ensemble hourly forecast (multiple (31) realisations of
-conditions). Now we have a timeseries of historic data and a 31 member
-ensemble forecast of future air temperatures.
+    ## # A tibble: 989,551 × 7
+    ##    parameter datetime            variable   prediction family reference_datetime
+    ##        <dbl> <dttm>              <chr>           <dbl> <chr>  <lgl>             
+    ##  1         0 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ##  2         1 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ##  3         2 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ##  4         3 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ##  5         4 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ##  6         5 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ##  7         6 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ##  8         7 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ##  9         8 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ## 10         9 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
+    ## # ℹ 989,541 more rows
+    ## # ℹ 1 more variable: site_id <chr>
 
-<figure>
-<img src="tutorial_files/figure-markdown_github/unnamed-chunk-11-1.png"
-alt="Figure: historic and future NOAA air temeprature forecasts at lake sites" />
-<figcaption aria-hidden="true">Figure: historic and future NOAA air
-temeprature forecasts at lake sites</figcaption>
-</figure>
-
-To generate a daily water temperature forecast, we will use a daily
-water temperature to train and run our model. This is calculated from
-the hourly data we have but retains the ensemble members as a source of
-driver uncertainty.
+This is an hourly stacked ensemble of the one day ahead forecasts. We
+can take a mean of these ensembles to get an estimate of mean daily
+historical conditions. For the historical data we do not need the
+individual ensemble members, and will train with the ensemble mean.
 
 ``` r
-# get daily means
-daily_weather <- weather_dat |> 
-  mutate(datetime = as_date(datetime)) |>
-  group_by(datetime, site_id, variable, parameter) |>
-  summarise(prediction = mean(prediction), .groups = 'drop')
+# aggregate the past to mean values
+historical_weather <- historical_weather |> 
+  mutate(datetime = as_date(datetime)) |> 
+  group_by(datetime, site_id, variable) |> 
+  summarize(prediction = mean(prediction, na.rm = TRUE), .groups = "drop") 
 
-ggplot(daily_weather, aes(x=datetime, y=prediction)) +
+historical_weather
+```
+
+    ## # A tibble: 1,331 × 4
+    ##    datetime   site_id variable        prediction
+    ##    <date>     <chr>   <chr>                <dbl>
+    ##  1 2020-10-01 fcre    air_temperature       287.
+    ##  2 2020-10-02 fcre    air_temperature       285.
+    ##  3 2020-10-03 fcre    air_temperature       283.
+    ##  4 2020-10-04 fcre    air_temperature       284.
+    ##  5 2020-10-05 fcre    air_temperature       285.
+    ##  6 2020-10-06 fcre    air_temperature       285.
+    ##  7 2020-10-07 fcre    air_temperature       289.
+    ##  8 2020-10-08 fcre    air_temperature       290.
+    ##  9 2020-10-09 fcre    air_temperature       286.
+    ## 10 2020-10-10 fcre    air_temperature       287.
+    ## # ℹ 1,321 more rows
+
+### 4.1.2 Download future weather forecasts
+
+We can then look at the future weather forecasts in the same way but
+using the `noaa_stage2()`. The forecast becomes available from NOAA at
+5am UTC the following day, so we need to use the air temperature
+forecast from yesterday (`noaa_date`) to make our real-time water
+quality forecasts.
+
+``` r
+forecast_date <- Sys.Date() 
+noaa_date <- forecast_date - days(1)
+
+future_weather_s3 <- vera4castHelpers::noaa_stage2(start_date = as.character(noaa_date))
+variables <- c("air_temperature")
+
+future_weather <- future_weather_s3 |> 
+  dplyr::filter(datetime >= forecast_date,
+                site_id %in% site_list$site_id,
+                variable %in% variables) |> 
+  collect()
+```
+
+We can use the individual ensemble member in our model to include driver
+uncertainty in the water temperature forecast. To generate a daily water
+temperature forecast, we will use a daily water temperature to train and
+run our model. This is calculated from the hourly data we have but
+retains the ensemble members as a source of driver uncertainty.
+
+``` r
+# aggregate the past to mean values
+future_weather <- future_weather |> 
+  mutate(datetime = as_date(datetime)) |> 
+  group_by(datetime, site_id, variable, parameter) |> # parameter is included in the grouping variables
+  summarize(prediction = mean(prediction, na.rm = TRUE), .groups = "drop") 
+
+future_weather
+```
+
+    ## # A tibble: 1,085 × 5
+    ##    datetime   site_id variable        parameter prediction
+    ##    <date>     <chr>   <chr>               <dbl>      <dbl>
+    ##  1 2024-05-23 fcre    air_temperature         0       293.
+    ##  2 2024-05-23 fcre    air_temperature         1       293.
+    ##  3 2024-05-23 fcre    air_temperature         2       293.
+    ##  4 2024-05-23 fcre    air_temperature         3       292.
+    ##  5 2024-05-23 fcre    air_temperature         4       292.
+    ##  6 2024-05-23 fcre    air_temperature         5       292.
+    ##  7 2024-05-23 fcre    air_temperature         6       292.
+    ##  8 2024-05-23 fcre    air_temperature         7       291.
+    ##  9 2024-05-23 fcre    air_temperature         8       293.
+    ## 10 2024-05-23 fcre    air_temperature         9       295.
+    ## # ℹ 1,075 more rows
+
+``` r
+ggplot(future_weather, aes(x=datetime, y=prediction)) +
   geom_line(aes(group = parameter), alpha = 0.4)+
-  facet_wrap(~variable, scales = 'free')
+  geom_line(data = historical_weather) +
+  facet_wrap(~variable, scales = 'free') +
+  coord_cartesian(xlim = c(forecast_date - 150, forecast_date + 30))
 ```
 
-![](tutorial_files/figure-markdown_github/unnamed-chunk-12-1.png)
+![](tutorial_files/figure-markdown_github/weather-data-1.png)
 
-We will separate the data into `historic_weather` for
-training/calibration and then `future_weather` to generate a forecast.
-We will also convert to Celsius from Kelvin. For the historical data we
-do not need the individual ensemble members, and will train with the
-ensemble mean.
+We have separate `historical_weather` for training/calibration and
+`future_weather` to generate a forecast. Finally, we will also convert
+to Celsius from Kelvin.
 
 ``` r
-# split it into historic and future
-forecast_date <- Sys.Date()
-
-historic_weather <- daily_weather |>
-  filter(datetime < forecast_date) |>
-  group_by(datetime, variable, site_id) |> 
-  # calculate the ensemble mean
-  summarise(prediction = mean(prediction), .groups = 'drop') |> 
+historical_weather <- historical_weather |> 
   pivot_wider(names_from = variable, values_from = prediction) |>
   mutate(air_temperature = air_temperature - 273.15) # convert to degree C
 
 
-future_weather <- daily_weather |>
-  filter(datetime >= forecast_date) |>
+future_weather <- future_weather |>
   pivot_wider(names_from = variable, values_from = prediction) |>
   mutate(air_temperature = air_temperature - 273.15) # convert to degree C
 ```
@@ -406,13 +500,13 @@ estimate water temperature at each site. The ensemble weather forecast
 will therefore propagate uncertainty into the water temperature forecast
 and give an estimate of driving data uncertainty.
 
-We will start by joining the historic weather data with the targets to
+We will start by joining the historical weather data with the targets to
 aid in fitting the linear model.
 
 ``` r
 targets_lm <- targets |> 
   pivot_wider(names_from = 'variable', values_from = 'observation') |> 
-  left_join(historic_weather, 
+  left_join(historical_weather, 
             by = c("datetime","site_id"))
 
 tail(targets_lm)
@@ -421,12 +515,12 @@ tail(targets_lm)
     ## # A tibble: 6 × 7
     ##   project_id site_id datetime            duration depth_m Temp_C_mean
     ##   <chr>      <chr>   <dttm>              <chr>      <dbl>       <dbl>
-    ## 1 vera4cast  fcre    2024-05-10 00:00:00 P1D          1.6        20.8
-    ## 2 vera4cast  fcre    2024-05-11 00:00:00 P1D          1.6        20.1
-    ## 3 vera4cast  fcre    2024-05-12 00:00:00 P1D          1.6        19.8
-    ## 4 vera4cast  fcre    2024-05-13 00:00:00 P1D          1.6        19.7
-    ## 5 vera4cast  fcre    2024-05-14 00:00:00 P1D          1.6        19.6
-    ## 6 vera4cast  fcre    2024-05-15 00:00:00 P1D          1.6        19.1
+    ## 1 vera4cast  fcre    2024-05-17 00:00:00 P1D          1.6        19.6
+    ## 2 vera4cast  fcre    2024-05-18 00:00:00 P1D          1.6        19.7
+    ## 3 vera4cast  fcre    2024-05-19 00:00:00 P1D          1.6        19.7
+    ## 4 vera4cast  fcre    2024-05-20 00:00:00 P1D          1.6        20.4
+    ## 5 vera4cast  fcre    2024-05-21 00:00:00 P1D          1.6        20.7
+    ## 6 vera4cast  fcre    2024-05-22 00:00:00 P1D          1.6        21.5
     ## # ℹ 1 more variable: air_temperature <dbl>
 
 To fit the linear model, we use the base R `lm()` but there are also
@@ -448,7 +542,7 @@ print(fit)
     ## 
     ## Coefficients:
     ##                (Intercept)  targets_lm$air_temperature  
-    ##                   19.34324                     0.03789
+    ##                     5.2509                      0.7578
 
 ``` r
 # Use the fitted linear model to forecast water temperature for each ensemble member
@@ -469,7 +563,7 @@ quantification of the uncertainty in our forecast.
 
 Looking at the forecasts we produced:
 
-![](tutorial_files/figure-markdown_github/unnamed-chunk-16-1.png)
+![](tutorial_files/figure-markdown_github/wq-forecast-1.png)
 
 ## 5.1 Convert to forecast standard for submission
 
@@ -531,6 +625,29 @@ if (dir.exists(save_here)) {
 ```
 
 ``` r
+vera4castHelpers::forecast_output_validator(forecast_file = forecast_file)
+```
+
+    ## Forecasts/2024-05-23-example_ID.csv
+
+    ## ✔ file has model_id column
+    ## ✔ forecasted variables found correct variable + prediction column
+    ## ✔ file has correct family and parameter columns
+    ## ✔ file has site_id column
+    ## ✔ file has datetime column
+    ## ✔ file has correct datetime column
+    ## ✔ file has duration column
+    ## ✔ file has depth column
+    ## ✔ file has project_id column
+    ## ✔ file has reference_datetime column
+    ## Forecast format is valid
+
+    ## [1] TRUE
+
+The checks show us that our forecast is valid and we can go ahead and
+submit it!
+
+``` r
 vera4castHelpers::submit(forecast_file = forecast_file)
 ```
 
@@ -540,14 +657,7 @@ about using yesterday’s air and water temperatures to predict tomorrow?
 Or including additional parameters? There’s a lot of variability in
 water temperatures unexplained by air temperature alone.
 
-    ## `geom_smooth()` using formula = 'y ~ x'
-
-![](tutorial_files/figure-markdown_github/unnamed-chunk-20-1.png)
-
-Note: that this is a model built on only a very short period of historic
-weather data! Other historic weather data is available from Open Meteo
-(see the [ROpen-Meteo
-package](www.github.com/FLARE-forecast/RopenMeteo)).
+![](tutorial_files/figure-markdown_github/linear-model-1.png)
 
 # 7 TASKS
 
