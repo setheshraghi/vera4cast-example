@@ -4,7 +4,7 @@ generate_example_forecast <- function(forecast_date, # a recommended argument so
                                       targets_url, # where are the targets you are forecasting?
                                       var, # what variable?
                                       site, # what site,
-                                      lat, long,
+                                      horizon = 30, # (days)
                                       forecast_depths = 'focal',
                                       project_id = 'vera4cast') {
 
@@ -32,71 +32,86 @@ generate_example_forecast <- function(forecast_date, # a recommended argument so
 
   # Get the weather data
   message('Getting weather')
-  # uses the RopenMeteo function to grab weather from the sites
-  # and you can specify the length of the future period and number of days in the past
-    # you can modify the data that are collected
+  # you can modify the data that are collected
 
   # Collect th relevant weather data
-  weather_dat <- RopenMeteo::get_ensemble_forecast(
-    latitude = lat,
-    longitude = long,
-    forecast_days = 30, # days into the future
-    past_days = 60, # past days that can be used for model fitting
-    model = "gfs_seamless",
-    variables = "temperature_2m") |>
+  historical_weather_s3 <- vera4castHelpers::noaa_stage3()
 
-    # convert to a standardised forecast
-    RopenMeteo::convert_to_efi_standard() |>
-    mutate(site_id = site,
-           datetime = as_date(datetime)) |>
-    group_by(datetime, site_id, variable, parameter) |>
+  variables <- c("air_temperature")
 
-    #calcuate the daily mean
-    summarise(prediction = mean(prediction), .groups = 'drop')
-  #-------------------------------------
+  historical_weather <- historical_weather_s3  |>
+    dplyr::filter(site_id %in% site,
+                  variable %in% variables) |>
+    dplyr::collect()  |>
+    mutate(datetime = as_date(datetime)) |>
+    group_by(datetime, site_id, variable) |>
+    summarize(prediction = mean(prediction, na.rm = TRUE), .groups = "drop") |>
+    # convert air temperature to Celsius if it is included in the weather data
+    mutate(prediction = ifelse(variable == "air_temperature", prediction - 273.15, prediction)) |>
+    pivot_wider(names_from = variable, values_from = prediction)
 
+  noaa_date <- forecast_date - days(1)
 
-  #-------------------------------------
+  future_weather_s3 <- vera4castHelpers::noaa_stage2(start_date = as.character(noaa_date))
 
-  # split it into historic and future
-   historic_weather <- weather_dat |>
-    filter(datetime < forecast_date) |>
-    # calculate a daily mean (remove ensemble)
-    group_by(datetime, variable, site_id) |>
-    summarise(prediction = mean(prediction), .groups = 'drop') |>
+  future_weather <- future_weather_s3 |>
+    dplyr::filter(datetime >= forecast_date,
+                  site_id %in% site,
+                  variable %in% variables) |>
+    collect() |>
+    mutate(datetime = as_date(datetime)) |>
+    group_by(datetime, site_id, variable, parameter) |> # parameter is included in the grouping variables
+    summarize(prediction = mean(prediction, na.rm = TRUE), .groups = "drop")  |>
+    # convert air temperature to Celsius if it is included in the weather data
+    mutate(prediction = ifelse(variable == "air_temperature", prediction - 273.15, prediction)) |>
     pivot_wider(names_from = variable, values_from = prediction) |>
-    mutate(air_temperature = air_temperature - 273.15)
+    select(any_of(c('datetime', 'site_id', variables, 'parameter')))
 
-  forecast_weather <- weather_dat |>
-    filter(datetime >= forecast_date) |>
-    pivot_wider(names_from = variable, values_from = prediction) |>
-    mutate(air_temperature = air_temperature - 273.15)
   #-------------------------------------
+
 
   # Fit model
   message('Fitting model')
   fit_df <- targets |>
     pivot_wider(names_from = variable, values_from = observation) |>
-    left_join(historic_weather, by = join_by(site_id, datetime))
+    left_join(historical_weather, by = join_by(site_id, datetime))
 
   model_fit <- lm(fit_df$Temp_C_mean ~ fit_df$air_temperature)
+
+  coeff <- model_fit$coefficients
   #-------------------------------------
 
   # Generate forecasts
   message('Generating forecast')
-  forecast <- (forecast_weather$air_temperature * model_fit$coefficients[2]) + model_fit$coefficients[1]
 
-  forecast_df <- data.frame(datetime = forecast_weather$datetime,
-                            reference_datetime = forecast_date,
-                            model_id = model_id,
-                            site_id = forecast_weather$site_id,
-                            parameter = forecast_weather$parameter,
-                            family = 'ensemble',
-                            prediction = forecast,
-                            variable = var,
-                            depth_m = forecast_depths,
-                            duration = targets$duration[1],
-                            project_id = project_id)
+
+  # set up forecast df
+  forecast_df <- NULL
+  forecast_horizon <- horizon # make a 30 day-ahead forecast
+  forecast_dates <- seq(from = ymd(forecast_date), to = ymd(forecast_date) + forecast_horizon, by = "day")
+
+
+  for (t in 1:length(forecast_dates)) {
+    temp_driv <- future_weather |>
+      filter(datetime == forecast_dates[t])
+
+    forecast <-  coeff[1] + (future_weather$air_temperature * coeff[2])
+
+    forecast_temp <- data.frame(datetime = future_weather$datetime,
+                                reference_datetime = forecast_date,
+                                model_id = model_id,
+                                site_id = future_weather$site_id,
+                                parameter = future_weather$parameter,
+                                family = 'ensemble',
+                                prediction = forecast,
+                                variable = var,
+                                depth_m = forecast_depths,
+                                duration = targets$duration[1],
+                                project_id = project_id)
+
+    forecast_df <- bind_rows(forecast_df, forecast_temp)
+  }
+
   #-------------------------------------
 
   return(forecast_df)

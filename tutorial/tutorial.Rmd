@@ -300,21 +300,39 @@ tail(targets_lm)
 To fit the linear model, we use the base R `lm()` but there are also methods to fit linear (and non-linear) models in the `fable::` package. You can explore the [documentation](https://otexts.com/fpp3/regression.html) for more information on the `fable::TSLM()` function.
 
 ```{r}
+# set up forecast df
+forecast_df <- NULL
+forecast_horizon <- 30 # make a 30 day-ahead forecast
+forecast_dates <- seq(from = ymd(forecast_date), to = ymd(forecast_date) + forecast_horizon, by = "day")
+
 
 # Fit linear model based on past data: water temperature = m * air temperature + b
 fit <- lm(targets_lm$Temp_C_mean ~ targets_lm$air_temperature)
     
 print(fit)
 
-# Use the fitted linear model to forecast water temperature for each ensemble member
-forecasted_temperature <- fit$coefficients[1] + fit$coefficients[2] * future_weather$air_temperature
+coeff <- fit$coefficients
 
-# Put all the relevant information into a tibble that we can bind together
-temp_lm_forecast <- tibble(datetime = future_weather$datetime,
-                           site_id = future_weather$site_id,
-                           parameter = future_weather$parameter,
-                           prediction = forecasted_temperature,
-                           variable = "Temp_C_mean")
+# Use the fitted linear model to forecast water temperature for each ensemble member on each date
+for (t in 1:length(forecast_dates)) {
+    #pull driver ensemble for the relevant date; using all 31 NOAA ensemble members
+  temp_driv <- future_weather |> 
+    filter(datetime == forecast_dates[t])
+  
+  
+  forecasted_temperature <- coeff[1] + coeff[2] * temp_driv$air_temperature
+
+  # Put all the relevant information into a tibble that we can bind together
+  temp_lm_forecast <- tibble(datetime = temp_driv$datetime,
+                             site_id = temp_driv$site_id,
+                             parameter = temp_driv$parameter,
+                             prediction = forecasted_temperature,
+                             variable = "Temp_C_mean")
+  
+  forecast_df <- dplyr::bind_rows(forecast_df, temp_lm_forecast)
+  
+}
+
   
 ```
 
@@ -323,7 +341,7 @@ We now have 31 possible forecasts of water temperature at each site and each day
 Looking at the forecasts we produced:
 
 ```{r wq-forecast, echo = F, warning = F}
-temp_lm_forecast %>% 
+forecast_df %>% 
   filter(variable == 'Temp_C_mean') %>%
   ggplot(.,aes(x=datetime, y=prediction, group = parameter)) + 
   geom_point(data = filter(targets, depth_m == 1.6), 
@@ -337,10 +355,10 @@ temp_lm_forecast %>%
   annotate("text", x = forecast_date - days(10), y = 20, label = "past")  +
   annotate("text", x = forecast_date + days(12), y = 20, label = "future")  +
   theme_bw() +
-  coord_cartesian(xlim = c(min(temp_lm_forecast$datetime) - 10,
+  coord_cartesian(xlim = c(min(forecast_df$datetime) - 10,
                            forecast_date + 30),
-                  ylim = c(min(temp_lm_forecast$prediction) -1,
-                           max(temp_lm_forecast$prediction) + 1)) +
+                  ylim = c(min(forecast_df$prediction) -1,
+                           max(forecast_df$prediction) + 1)) +
   scale_linetype_manual(values = 'dashed', name = '') +
   scale_colour_manual(values = 'darkgrey', name = '') 
 ```
@@ -364,7 +382,7 @@ The columns `project_id`, `depth_m`, and `duration` are also needed. For a daily
 # Remember to change the model_id when you make changes to the model structure!
 model_id <- 'example_ID'
 
-temp_lm_forecast_standard <- temp_lm_forecast %>%
+forecast_df_standard <- forecast_df %>%
   mutate(model_id = model_id,
          reference_datetime = forecast_date,
          family = 'ensemble',
@@ -388,10 +406,10 @@ save_here <- 'Forecasts/' # just for helpful organisation
 forecast_file <- paste0(save_here, forecast_date, '-', model_id, '.csv')
 
 if (dir.exists(save_here)) {
-  write_csv(temp_lm_forecast_standard, forecast_file)
+  write_csv(forecast_df_standard, forecast_file)
 } else {
   dir.create(save_here)
-  write_csv(temp_lm_forecast_standard, forecast_file)
+  write_csv(forecast_df_standard, forecast_file)
 }
 
 ```
@@ -418,11 +436,11 @@ ggplot(targets_lm, aes(x=air_temperature, y= Temp_C_mean)) +
 
 Possible modifications to the simple linear model:
 
--   Include additional weather co-variates in the linear model. List them in the `get_ensemble_forecast()` function.
+-   Include additional weather co-variates in the linear model. List them in the `noaa_stage2` and `noaa_stage3` functions before `collect()`.
 -   Specify a non-linear relationship.
 -   Try forecasting another variable - could you use your water temperature to estimate dissolved oxygen concentration at the surface? To learn more about the other focal variables, see [here](https://www.ltreb-reservoirs.org/vera4cast/targets.html).
 -   Include a lag in the predictors.
--   Add another source of uncertainty - what are the errors in the linear model?
+-   Add another source of uncertainty - what are the errors in the linear model? - Check out [Macrosystems EDDIE module 6](https://github.com/MacrosystemsEDDIE/module6_R)!
 
 Until you start submitting 'real' forecasts you can (should) keep `example` in the model_id. These forecasts are processed and scored but are not retained for longer than 1 month.
 
