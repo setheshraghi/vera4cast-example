@@ -213,7 +213,7 @@ site_list <- read_csv("https://raw.githubusercontent.com/LTREB-reservoirs/vera4c
 
 Let’s take a look at the targets data!
 
-    ## Rows: 126,619
+    ## Rows: 126,674
     ## Columns: 7
     ## $ project_id  <chr> "vera4cast", "vera4cast", "vera4cast", "vera4cast", "vera4…
     ## $ site_id     <chr> "fcre", "fcre", "fcre", "fcre", "fcre", "fcre", "fcre", "f…
@@ -367,7 +367,7 @@ historical_weather <- historical_weather_s3  |>
 historical_weather
 ```
 
-    ## # A tibble: 989,551 × 7
+    ## # A tibble: 990,295 × 7
     ##    parameter datetime            variable   prediction family reference_datetime
     ##        <dbl> <dttm>              <chr>           <dbl> <chr>  <lgl>             
     ##  1         0 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
@@ -380,7 +380,7 @@ historical_weather
     ##  8         7 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
     ##  9         8 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
     ## 10         9 2020-10-01 00:00:00 air_tempe…       286. ensem… NA                
-    ## # ℹ 989,541 more rows
+    ## # ℹ 990,285 more rows
     ## # ℹ 1 more variable: site_id <chr>
 
 This is an hourly stacked ensemble of the one day ahead forecasts. We
@@ -398,7 +398,7 @@ historical_weather <- historical_weather |>
 historical_weather
 ```
 
-    ## # A tibble: 1,331 × 4
+    ## # A tibble: 1,332 × 4
     ##    datetime   site_id variable        prediction
     ##    <date>     <chr>   <chr>                <dbl>
     ##  1 2020-10-01 fcre    air_temperature       287.
@@ -411,7 +411,7 @@ historical_weather
     ##  8 2020-10-08 fcre    air_temperature       290.
     ##  9 2020-10-09 fcre    air_temperature       286.
     ## 10 2020-10-10 fcre    air_temperature       287.
-    ## # ℹ 1,321 more rows
+    ## # ℹ 1,322 more rows
 
 ### 4.1.2 Download future weather forecasts
 
@@ -454,16 +454,16 @@ future_weather
     ## # A tibble: 1,085 × 5
     ##    datetime   site_id variable        parameter prediction
     ##    <date>     <chr>   <chr>               <dbl>      <dbl>
-    ##  1 2024-05-23 fcre    air_temperature         0       293.
-    ##  2 2024-05-23 fcre    air_temperature         1       293.
-    ##  3 2024-05-23 fcre    air_temperature         2       293.
-    ##  4 2024-05-23 fcre    air_temperature         3       292.
-    ##  5 2024-05-23 fcre    air_temperature         4       292.
-    ##  6 2024-05-23 fcre    air_temperature         5       292.
-    ##  7 2024-05-23 fcre    air_temperature         6       292.
-    ##  8 2024-05-23 fcre    air_temperature         7       291.
-    ##  9 2024-05-23 fcre    air_temperature         8       293.
-    ## 10 2024-05-23 fcre    air_temperature         9       295.
+    ##  1 2024-05-24 fcre    air_temperature         0       294.
+    ##  2 2024-05-24 fcre    air_temperature         1       293.
+    ##  3 2024-05-24 fcre    air_temperature         2       293.
+    ##  4 2024-05-24 fcre    air_temperature         3       293.
+    ##  5 2024-05-24 fcre    air_temperature         4       293.
+    ##  6 2024-05-24 fcre    air_temperature         5       293.
+    ##  7 2024-05-24 fcre    air_temperature         6       295.
+    ##  8 2024-05-24 fcre    air_temperature         7       292.
+    ##  9 2024-05-24 fcre    air_temperature         8       293.
+    ## 10 2024-05-24 fcre    air_temperature         9       293.
     ## # ℹ 1,075 more rows
 
 ``` r
@@ -515,12 +515,12 @@ tail(targets_lm)
     ## # A tibble: 6 × 7
     ##   project_id site_id datetime            duration depth_m Temp_C_mean
     ##   <chr>      <chr>   <dttm>              <chr>      <dbl>       <dbl>
-    ## 1 vera4cast  fcre    2024-05-17 00:00:00 P1D          1.6        19.6
-    ## 2 vera4cast  fcre    2024-05-18 00:00:00 P1D          1.6        19.7
-    ## 3 vera4cast  fcre    2024-05-19 00:00:00 P1D          1.6        19.7
-    ## 4 vera4cast  fcre    2024-05-20 00:00:00 P1D          1.6        20.4
-    ## 5 vera4cast  fcre    2024-05-21 00:00:00 P1D          1.6        20.7
-    ## 6 vera4cast  fcre    2024-05-22 00:00:00 P1D          1.6        21.5
+    ## 1 vera4cast  fcre    2024-05-18 00:00:00 P1D          1.6        19.7
+    ## 2 vera4cast  fcre    2024-05-19 00:00:00 P1D          1.6        19.7
+    ## 3 vera4cast  fcre    2024-05-20 00:00:00 P1D          1.6        20.4
+    ## 4 vera4cast  fcre    2024-05-21 00:00:00 P1D          1.6        20.7
+    ## 5 vera4cast  fcre    2024-05-22 00:00:00 P1D          1.6        21.5
+    ## 6 vera4cast  fcre    2024-05-23 00:00:00 P1D          1.6        21.7
     ## # ℹ 1 more variable: air_temperature <dbl>
 
 To fit the linear model, we use the base R `lm()` but there are also
@@ -530,6 +530,12 @@ You can explore the
 information on the `fable::TSLM()` function.
 
 ``` r
+# set up forecast df
+forecast_df <- NULL
+forecast_horizon <- 30 # make a 30 day-ahead forecast
+forecast_dates <- seq(from = ymd(forecast_date), to = ymd(forecast_date) + forecast_horizon, by = "day")
+
+
 # Fit linear model based on past data: water temperature = m * air temperature + b
 fit <- lm(targets_lm$Temp_C_mean ~ targets_lm$air_temperature)
     
@@ -542,18 +548,30 @@ print(fit)
     ## 
     ## Coefficients:
     ##                (Intercept)  targets_lm$air_temperature  
-    ##                     5.2509                      0.7578
+    ##                      5.250                       0.758
 
 ``` r
-# Use the fitted linear model to forecast water temperature for each ensemble member
-forecasted_temperature <- fit$coefficients[1] + fit$coefficients[2] * future_weather$air_temperature
+coeff <- fit$coefficients
 
-# Put all the relevant information into a tibble that we can bind together
-temp_lm_forecast <- tibble(datetime = future_weather$datetime,
-                           site_id = future_weather$site_id,
-                           parameter = future_weather$parameter,
-                           prediction = forecasted_temperature,
-                           variable = "Temp_C_mean")
+# Use the fitted linear model to forecast water temperature for each ensemble member on each date
+for (t in 1:length(forecast_dates)) {
+    #pull driver ensemble for the relevant date; using all 31 NOAA ensemble members
+  temp_driv <- future_weather |> 
+    filter(datetime == forecast_dates[t])
+  
+  
+  forecasted_temperature <- coeff[1] + coeff[2] * temp_driv$air_temperature
+
+  # Put all the relevant information into a tibble that we can bind together
+  temp_lm_forecast <- tibble(datetime = temp_driv$datetime,
+                             site_id = temp_driv$site_id,
+                             parameter = temp_driv$parameter,
+                             prediction = forecasted_temperature,
+                             variable = "Temp_C_mean")
+  
+  forecast_df <- dplyr::bind_rows(forecast_df, temp_lm_forecast)
+  
+}
 ```
 
 We now have 31 possible forecasts of water temperature at each site and
@@ -587,7 +605,7 @@ forecast at the focal depth only (1.6 m).
 # Remember to change the model_id when you make changes to the model structure!
 model_id <- 'example_ID'
 
-temp_lm_forecast_standard <- temp_lm_forecast %>%
+forecast_df_standard <- forecast_df %>%
   mutate(model_id = model_id,
          reference_datetime = forecast_date,
          family = 'ensemble',
@@ -617,10 +635,10 @@ save_here <- 'Forecasts/' # just for helpful organisation
 forecast_file <- paste0(save_here, forecast_date, '-', model_id, '.csv')
 
 if (dir.exists(save_here)) {
-  write_csv(temp_lm_forecast_standard, forecast_file)
+  write_csv(forecast_df_standard, forecast_file)
 } else {
   dir.create(save_here)
-  write_csv(temp_lm_forecast_standard, forecast_file)
+  write_csv(forecast_df_standard, forecast_file)
 }
 ```
 
@@ -628,7 +646,7 @@ if (dir.exists(save_here)) {
 vera4castHelpers::forecast_output_validator(forecast_file = forecast_file)
 ```
 
-    ## Forecasts/2024-05-23-example_ID.csv
+    ## Forecasts/2024-05-24-example_ID.csv
 
     ## ✔ file has model_id column
     ## ✔ forecasted variables found correct variable + prediction column
@@ -664,7 +682,8 @@ water temperatures unexplained by air temperature alone.
 Possible modifications to the simple linear model:
 
 -   Include additional weather co-variates in the linear model. List
-    them in the `get_ensemble_forecast()` function.
+    them in the `noaa_stage2` and `noaa_stage3` functions before
+    `collect()`.
 -   Specify a non-linear relationship.
 -   Try forecasting another variable - could you use your water
     temperature to estimate dissolved oxygen concentration at the
@@ -672,7 +691,8 @@ Possible modifications to the simple linear model:
     [here](https://www.ltreb-reservoirs.org/vera4cast/targets.html).
 -   Include a lag in the predictors.
 -   Add another source of uncertainty - what are the errors in the
-    linear model?
+    linear model? - Check out [Macrosystems EDDIE module
+    6](https://github.com/MacrosystemsEDDIE/module6_R)!
 
 Until you start submitting ‘real’ forecasts you can (should) keep
 `example` in the model_id. These forecasts are processed and scored but
