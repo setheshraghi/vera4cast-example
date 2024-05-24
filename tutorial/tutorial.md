@@ -40,7 +40,6 @@ packages will need to be installed first:
 -   `remotes`
 -   `tidyverse`
 -   `lubridate`
--   `RopenMeteo` (from Github)
 -   `vera4castHelpers` (from Github)
 
 The following code chunk should be run to install packages.
@@ -51,7 +50,6 @@ install.packages('tidyverse') # collection of R packages for data manipulation, 
 install.packages('lubridate') # working with dates and times
 install.packages('here')
 
-remotes::install_github('FLARE-forecast/RopenMeteo') # R interface with API OpenMeteo - weather forecasts
 remotes::install_github('LTREB-reservoirs/vera4castHelpers') # package to assist with forecast submission
 ```
 
@@ -298,7 +296,7 @@ started forecasting:
 -   We could use information about current conditions to predict the
     next day. What is happening today is usually a good predictor of
     what will happen tomorrow (persistence model).
--   We could also think about what the historicalal data tells us about
+-   We could also think about what the historical data tells us about
     reservoir dynamics this time of year. For example, conditions in
     January this year are likely to be similar to January last year
     (climatology/day-of-year model)
@@ -332,7 +330,7 @@ The 3 types of data are as follows:
     We recommend this for obtaining future weather. Future weather
     forecasts include a 30-member ensemble of equally likely future
     weather conditions.
--   stage_3: can be viewed as the “historicalal” weather and is
+-   stage_3: can be viewed as the “historical” weather and is
     combination of day 1 weather forecasts (i.e., when the forecasts are
     most accurate).
 
@@ -340,9 +338,6 @@ This code create a connection to the dataset hosted remotely at an S3
 storage location. To download the data you have to tell the function to
 `collect()` it. These data set can be subsetted and filtered using
 `dplyr` functions prior to download to limit the memory usage.
-
-You can read more about the NOAA forecasts available for the NEON sites
-[here:](https://projects.ecoforecast.org/neon4cast-docs/Shared-Forecast-Drivers.html)
 
 ## 4.1 Download co-variates
 
@@ -426,14 +421,31 @@ forecast_date <- Sys.Date()
 noaa_date <- forecast_date - days(1)
 
 future_weather_s3 <- vera4castHelpers::noaa_stage2(start_date = as.character(noaa_date))
-variables <- c("air_temperature")
 
 future_weather <- future_weather_s3 |> 
   dplyr::filter(datetime >= forecast_date,
                 site_id %in% site_list$site_id,
                 variable %in% variables) |> 
   collect()
+
+future_weather
 ```
+
+    ## # A tibble: 25,327 × 7
+    ##    parameter datetime            variable        prediction family   site_id
+    ##        <dbl> <dttm>              <chr>                <dbl> <chr>    <chr>  
+    ##  1         0 2024-05-24 00:00:00 air_temperature       293. ensemble fcre   
+    ##  2         0 2024-05-24 01:00:00 air_temperature       292. ensemble fcre   
+    ##  3         0 2024-05-24 02:00:00 air_temperature       291. ensemble fcre   
+    ##  4         0 2024-05-24 03:00:00 air_temperature       290. ensemble fcre   
+    ##  5         0 2024-05-24 04:00:00 air_temperature       290. ensemble fcre   
+    ##  6         0 2024-05-24 05:00:00 air_temperature       290. ensemble fcre   
+    ##  7         0 2024-05-24 06:00:00 air_temperature       289. ensemble fcre   
+    ##  8         0 2024-05-24 07:00:00 air_temperature       289. ensemble fcre   
+    ##  9         0 2024-05-24 08:00:00 air_temperature       289. ensemble fcre   
+    ## 10         0 2024-05-24 09:00:00 air_temperature       289. ensemble fcre   
+    ## # ℹ 25,317 more rows
+    ## # ℹ 1 more variable: reference_datetime <dttm>
 
 We can use the individual ensemble member in our model to include driver
 uncertainty in the water temperature forecast. To generate a daily water
@@ -447,24 +459,7 @@ future_weather <- future_weather |>
   mutate(datetime = as_date(datetime)) |> 
   group_by(datetime, site_id, variable, parameter) |> # parameter is included in the grouping variables
   summarize(prediction = mean(prediction, na.rm = TRUE), .groups = "drop") 
-
-future_weather
 ```
-
-    ## # A tibble: 1,085 × 5
-    ##    datetime   site_id variable        parameter prediction
-    ##    <date>     <chr>   <chr>               <dbl>      <dbl>
-    ##  1 2024-05-24 fcre    air_temperature         0       294.
-    ##  2 2024-05-24 fcre    air_temperature         1       293.
-    ##  3 2024-05-24 fcre    air_temperature         2       293.
-    ##  4 2024-05-24 fcre    air_temperature         3       293.
-    ##  5 2024-05-24 fcre    air_temperature         4       293.
-    ##  6 2024-05-24 fcre    air_temperature         5       293.
-    ##  7 2024-05-24 fcre    air_temperature         6       295.
-    ##  8 2024-05-24 fcre    air_temperature         7       292.
-    ##  9 2024-05-24 fcre    air_temperature         8       293.
-    ## 10 2024-05-24 fcre    air_temperature         9       293.
-    ## # ℹ 1,075 more rows
 
 ``` r
 ggplot(future_weather, aes(x=datetime, y=prediction)) +
@@ -496,9 +491,9 @@ future_weather <- future_weather |>
 We will fit a simple linear model between historical air temperature and
 the water temperature targets data. Using this model we can then use our
 future forecasts of air temperature (all 31 ensembles from NOAA GEFS) to
-estimate water temperature at each site. The ensemble weather forecast
-will therefore propagate uncertainty into the water temperature forecast
-and give an estimate of driving data uncertainty.
+estimate water temperature. The ensemble weather forecast will therefore
+propagate uncertainty into the water temperature forecast and give an
+estimate of driver data uncertainty.
 
 We will start by joining the historical weather data with the targets to
 aid in fitting the linear model.
@@ -555,7 +550,8 @@ coeff <- fit$coefficients
 
 # Use the fitted linear model to forecast water temperature for each ensemble member on each date
 for (t in 1:length(forecast_dates)) {
-    #pull driver ensemble for the relevant date; using all 31 NOAA ensemble members
+  
+  #pull driver ensemble for the relevant date; using all 31 NOAA ensemble members
   temp_driv <- future_weather |> 
     filter(datetime == forecast_dates[t])
   
@@ -572,7 +568,24 @@ for (t in 1:length(forecast_dates)) {
   forecast_df <- dplyr::bind_rows(forecast_df, temp_lm_forecast)
   
 }
+
+forecast_df  
 ```
+
+    ## # A tibble: 961 × 5
+    ##    datetime   site_id parameter prediction variable   
+    ##    <date>     <chr>       <dbl>      <dbl> <chr>      
+    ##  1 2024-05-24 fcre            0       21.2 Temp_C_mean
+    ##  2 2024-05-24 fcre            1       20.0 Temp_C_mean
+    ##  3 2024-05-24 fcre            2       20.2 Temp_C_mean
+    ##  4 2024-05-24 fcre            3       20.6 Temp_C_mean
+    ##  5 2024-05-24 fcre            4       20.4 Temp_C_mean
+    ##  6 2024-05-24 fcre            5       20.4 Temp_C_mean
+    ##  7 2024-05-24 fcre            6       21.9 Temp_C_mean
+    ##  8 2024-05-24 fcre            7       19.8 Temp_C_mean
+    ##  9 2024-05-24 fcre            8       20.0 Temp_C_mean
+    ## 10 2024-05-24 fcre            9       20.2 Temp_C_mean
+    ## # ℹ 951 more rows
 
 We now have 31 possible forecasts of water temperature at each site and
 each day. On this plot each line represents one of the possible
