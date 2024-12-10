@@ -3,7 +3,7 @@ source('forecast_code/load_packages.R')
 source('forecast_code/R/generate_example_forecast.R')
 
 forecast_date <- Sys.Date()
-model_id <- 'churner_example'
+model_id <- 'churner'
 source_python('report_on_enhancing_cfsv2_temperature_forecasts.py')
 forecast <- as.data.frame(py$forecast)
 
